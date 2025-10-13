@@ -1,17 +1,22 @@
 {
   "name": "lang-learn-ui",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint"
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start"
+},  
+  "scripts": {
+  "dev": "next dev --turbopack",
+  "build": "next build --turbopack",
+  "start": "next start",
+  "lint": "eslint"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.4"
+  "next": "13.x",
+  "react": "18.x",
+  "react-dom": "18.x"
   },
   "devDependencies": {
     "typescript": "^5",

@@ -1,0 +1,15 @@
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.main {
+  flex: 1;
+  padding: 20px;
+}
+
+.lessons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
