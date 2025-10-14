@@ -37,7 +37,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Stack
 Frontend: Next.js + TS + CSS
+
 Backend: Node.js + Socket.IO
+
 ORM: Prisma
+
 Baza danych: PostgreSQL
+
 Autoryzacja: JWT
