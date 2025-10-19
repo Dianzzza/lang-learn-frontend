@@ -2,6 +2,8 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import LessonCard from '../components/LessonCard';
 import styles from '../styles/Home.module.css'; // CSS Module
+import SocketTester from '../components/SocketTester';
+
 
 export default function Home() {
   const lessons = [
@@ -11,16 +13,20 @@ export default function Home() {
   ];
 
   return (
-    <div className={styles.container}>
+    <div className="container">
       <Sidebar />
-      <main className={styles.main}>
+      <main>
         <Header />
-        <section className={styles.lessons}>
+        <section>
           {lessons.map((lesson) => (
             <LessonCard key={lesson.id} lesson={lesson} />
           ))}
         </section>
+
+        {/* 👇 Dodajemy SocketTester */}
+        <SocketTester />
       </main>
     </div>
   );
 }
+
