@@ -1,0 +1,210 @@
+/* styles/PlaceholderPage.module.css */
+.container {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.placeholder {
+  text-align: center;
+  max-width: 500px;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--neutral-200);
+  animation: placeholderSlideIn 0.8s ease-out;
+}
+
+@keyframes placeholderSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  display: block;
+  animation: iconBounce 2s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin: 0 0 1rem 0;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.description {
+  font-size: 1.125rem;
+  color: var(--neutral-600);
+  line-height: 1.6;
+  margin: 0 0 2rem 0;
+}
+
+.comingSoon {
+  display: inline-block;
+  background: var(--gradient-success);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-xl);
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0;
+  box-shadow: var(--shadow-md);
+  animation: comingSoonPulse 3s ease-in-out infinite;
+}
+
+@keyframes comingSoonPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: var(--shadow-md);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1.5rem 0.75rem;
+    min-height: 70vh;
+  }
+  
+  .placeholder {
+    padding: 2rem 1.5rem;
+  }
+  
+  .icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .title {
+    font-size: 2rem;
+  }
+  
+  .description {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .comingSoon {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .placeholder {
+    padding: 1.5rem 1rem;
+  }
+  
+  .icon {
+    font-size: 2.5rem;
+  }
+  
+  .title {
+    font-size: 1.75rem;
+  }
+  
+  .description {
+    font-size: 0.9rem;
+  }
+  
+  .comingSoon {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Additional decorative elements */
+.placeholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.placeholder {
+  position: relative;
+}
+
+/* Hover effect */
+.placeholder:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+.placeholder:hover .icon {
+  animation-duration: 1s;
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .placeholder {
+    background: var(--neutral-800);
+    border-color: var(--neutral-700);
+  }
+  
+  .title {
+    color: white;
+  }
+  
+  .description {
+    color: var(--neutral-300);
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .placeholder {
+    animation: none;
+  }
+  
+  .icon {
+    animation: none;
+  }
+  
+  .comingSoon {
+    animation: none;
+  }
+  
+  .placeholder:hover {
+    transform: none;
+  }
+}

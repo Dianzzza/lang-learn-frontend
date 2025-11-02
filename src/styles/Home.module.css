@@ -1,15 +1,90 @@
-.container {
+/* styles/Home.module.css */
+.app {
+  min-height: 100vh;
   display: flex;
-  height: 100vh;
+  flex-direction: column;
 }
 
 .main {
   flex: 1;
-  padding: 20px;
+  padding: 2rem 0;
 }
 
-.lessons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-areas: 
+    "sidebar welcome stats"
+    "sidebar welcome stats";
+  gap: 2rem;
+  align-items: start;
+}
+
+.welcomeSection {
+  grid-area: welcome;
+  animation: fadeIn 0.6s ease-out;
+}
+
+.sidebar {
+  grid-area: sidebar;
+  animation: fadeIn 0.6s ease-out 0.2s both;
+}
+
+.statsSection {
+  grid-area: stats;
+  animation: fadeIn 0.6s ease-out 0.4s both;
+}
+
+/* Tablet Layout */
+@media (max-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 
+      "welcome welcome"
+      "sidebar stats";
+    gap: 1.5rem;
+  }
+}
+
+/* Mobile Layout */
+@media (max-width: 768px) {
+  .main {
+    padding: 1rem 0;
+  }
+  
+  .container {
+    grid-template-columns: 1fr;
+    grid-template-areas: 
+      "welcome"
+      "sidebar"
+      "stats";
+    gap: 1.5rem;
+    padding: 0 0.75rem;
+  }
+  
+  .sidebar {
+    order: 2;
+  }
+  
+  .statsSection {
+    order: 3;
+  }
+}
+
+/* Animation delays for mobile */
+@media (max-width: 768px) {
+  .welcomeSection {
+    animation-delay: 0s;
+  }
+  
+  .sidebar {
+    animation-delay: 0.1s;
+  }
+  
+  .statsSection {
+    animation-delay: 0.2s;
+  }
 }

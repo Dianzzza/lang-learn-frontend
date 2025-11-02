@@ -1,0 +1,439 @@
+/* styles/AuthForms.module.css */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Grupy pól formularza */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--neutral-700);
+  margin-bottom: 0.25rem;
+}
+
+/* Wrappery dla inputów z ikonami */
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  padding-right: 3rem;
+  border: 2px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  background: white;
+  transition: var(--transition-fast);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--neutral-400);
+}
+
+.input:focus {
+  border-color: var(--primary-indigo);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+.input:disabled {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: var(--secondary-red);
+  background: #fef2f2;
+}
+
+.inputError:focus {
+  border-color: var(--secondary-red);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Ikony w inputach */
+.inputIcon {
+  position: absolute;
+  right: 1rem;
+  font-size: 1.1rem;
+  color: var(--neutral-400);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--neutral-400);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  z-index: 2;
+}
+
+.passwordToggle:hover {
+  color: var(--neutral-600);
+  background: var(--neutral-100);
+}
+
+.passwordToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Błędy pól */
+.fieldError {
+  font-size: 0.8rem;
+  color: var(--secondary-red);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  animation: errorSlideIn 0.3s ease-out;
+}
+
+@keyframes errorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Komunikaty błędów globalnych */
+.errorMessage {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  animation: errorSlideIn 0.3s ease-out;
+}
+
+.errorIcon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+/* Boxy informacyjne */
+.infoBox {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #93c5fd;
+  color: #1e40af;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.infoIcon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+/* Checkbox regulaminu */
+.termsCheckbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--neutral-600);
+  line-height: 1.5;
+}
+
+.termsCheckbox input[type="checkbox"] {
+  margin-top: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--primary-indigo);
+}
+
+.link {
+  color: var(--primary-indigo);
+  text-decoration: underline;
+  transition: var(--transition-fast);
+}
+
+.link:hover {
+  color: var(--primary-purple);
+  text-decoration: none;
+}
+
+/* Przycisk "Zapomniałeś hasła?" */
+.forgotPassword {
+  background: none;
+  border: none;
+  color: var(--primary-indigo);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: right;
+  margin-top: -0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0;
+  transition: var(--transition-fast);
+}
+
+.forgotPassword:hover {
+  color: var(--primary-purple);
+  text-decoration: underline;
+}
+
+.forgotPassword:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Główne przyciski submit */
+.submitButton {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.submitButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.submitButton:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+/* Przyciski drugorzędne */
+.secondaryButton {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: var(--neutral-200);
+  color: var(--neutral-800);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Grupa przycisków */
+.buttonGroup {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.buttonGroup .secondaryButton {
+  flex: 1;
+}
+
+.buttonGroup .submitButton {
+  flex: 2;
+  margin-top: 0;
+}
+
+/* Ikony w przyciskach */
+.buttonIcon {
+  font-size: 1.1rem;
+}
+
+/* Spinner ładowania */
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .form {
+    gap: 1rem;
+  }
+  
+  .input {
+    padding: 0.75rem 0.875rem;
+    padding-right: 2.75rem;
+    font-size: 0.95rem;
+  }
+  
+  .submitButton {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.95rem;
+  }
+  
+  .secondaryButton {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.8rem;
+  }
+  
+  .buttonGroup {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .buttonGroup .submitButton,
+  .buttonGroup .secondaryButton {
+    flex: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .input {
+    padding: 0.625rem 0.75rem;
+    padding-right: 2.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .inputIcon,
+  .passwordToggle {
+    right: 0.625rem;
+    font-size: 1rem;
+  }
+  
+  .submitButton {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .secondaryButton {
+    padding: 0.625rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .label {
+    font-size: 0.8rem;
+  }
+  
+  .fieldError {
+    font-size: 0.75rem;
+  }
+  
+  .infoBox,
+  .errorMessage {
+    font-size: 0.8rem;
+    padding: 0.875rem;
+  }
+  
+  .termsCheckbox {
+    font-size: 0.8rem;
+  }
+}
+
+/* Dodatkowe style dla lepszej dostępności */
+.input:focus-visible {
+  outline: 2px solid var(--primary-indigo);
+  outline-offset: 2px;
+}
+
+.submitButton:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 2px solid var(--primary-indigo);
+  outline-offset: 2px;
+}
+
+/* Animacje dla lepszego UX */
+.form > * {
+  animation: formItemSlideIn 0.4s ease-out;
+}
+
+.form > *:nth-child(1) { animation-delay: 0.05s; }
+.form > *:nth-child(2) { animation-delay: 0.1s; }
+.form > *:nth-child(3) { animation-delay: 0.15s; }
+.form > *:nth-child(4) { animation-delay: 0.2s; }
+.form > *:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes formItemSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

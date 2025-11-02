@@ -1,0 +1,138 @@
+/* styles/Layout.module.css */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.main {
+  flex: 1;
+  position: relative;
+  padding-top: 1rem;
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid var(--neutral-200);
+  padding: 0.75rem 0;
+  position: sticky;
+  top: 4rem;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.breadcrumbsContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breadcrumbSeparator {
+  color: var(--neutral-400);
+  font-size: 0.875rem;
+  margin: 0 0.25rem;
+}
+
+.breadcrumbLink {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--neutral-600);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.breadcrumbLink:hover:not(.current) {
+  background: var(--neutral-100);
+  color: var(--primary-indigo);
+  transform: translateY(-1px);
+}
+
+.breadcrumbLink.current {
+  color: var(--primary-indigo);
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.1);
+  cursor: default;
+}
+
+.breadcrumbIcon {
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .breadcrumbs {
+    padding: 0.5rem 0;
+    top: 3.5rem;
+  }
+  
+  .breadcrumbsContainer {
+    padding: 0 0.75rem;
+  }
+  
+  .breadcrumbLink {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .breadcrumbIcon {
+    font-size: 0.875rem;
+  }
+  
+  .breadcrumbSeparator {
+    font-size: 0.75rem;
+    margin: 0 0.125rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .breadcrumbsContainer {
+    padding: 0 0.5rem;
+  }
+  
+  .breadcrumbLink {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+  }
+  
+  .breadcrumbIcon {
+    font-size: 0.8rem;
+  }
+}
+
+/* Animation for breadcrumbs */
+.breadcrumbItem {
+  animation: breadcrumbSlideIn 0.3s ease-out;
+}
+
+.breadcrumbItem:nth-child(1) { animation-delay: 0.1s; }
+.breadcrumbItem:nth-child(2) { animation-delay: 0.2s; }
+.breadcrumbItem:nth-child(3) { animation-delay: 0.3s; }
+.breadcrumbItem:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes breadcrumbSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
