@@ -132,7 +132,7 @@ export default function RegisterForm({ onSuccess, isLoading, setIsLoading }) {
             value={formData.email}
             onChange={handleChange}
             className={`${styles.input} ${errors.email ? styles.inputError : ''}`}
-            placeholder="[translate:your.email@example.com]"
+            placeholder="Twój adres e-mail (example@xyz.com)"
             disabled={isLoading}
           />
           <span className={styles.inputIcon}>📧</span>
