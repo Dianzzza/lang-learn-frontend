@@ -1,0 +1,79 @@
+/* styles/SettingsSidebar.module.css */
+
+.container {
+  padding: 1.5rem;
+  height: 100%;
+}
+
+.header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin: 0 0 0.25rem 0;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--neutral-600);
+  margin: 0;
+}
+
+.navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: left;
+  width: 100%;
+}
+
+.navItem:hover {
+  background: var(--neutral-100);
+}
+
+.navItem.active {
+  background: var(--primary-indigo);
+  color: white;
+}
+
+.navIcon {
+  font-size: 1.25rem;
+  width: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.navContent {
+  flex: 1;
+}
+
+.navLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.navDescription {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.navItem.active .navDescription {
+  opacity: 0.9;
+}

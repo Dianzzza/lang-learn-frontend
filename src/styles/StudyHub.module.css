@@ -1,0 +1,286 @@
+/* styles/StudyHub.module.css */
+/* GŁÓWNY HUB NAUKI - wszystkie tryby */
+
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--neutral-50) 0%, white 100%);
+  padding: 3rem 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* 🎯 PAGE HEADER */
+.pageHeader {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.pageTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin: 0 0 1.5rem 0;
+}
+
+.titleIcon {
+  font-size: 3rem;
+}
+
+.pageDescription {
+  font-size: 1.25rem;
+  color: var(--neutral-600);
+  margin: 0;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* 🎮 STUDY MODES GRID */
+.studyModesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.studyModeCard {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 3rem 2rem;
+  text-decoration: none;
+  color: inherit;
+  border: 2px solid var(--neutral-200);
+  transition: var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(2rem);
+  box-shadow: var(--shadow-md);
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.studyModeCard:hover {
+  border-color: var(--mode-color);
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-8px) scale(1.02);
+}
+
+.studyModeCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--mode-color);
+  opacity: 0;
+  transition: var(--transition-fast);
+}
+
+.studyModeCard:hover::before {
+  opacity: 1;
+}
+
+.newBadge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--secondary-green) 0%, var(--secondary-emerald) 100%);
+  color: white;
+  border-radius: var(--radius-lg);
+  font-size: 0.8rem;
+  font-weight: 700;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.newIcon {
+  font-size: 0.875rem;
+}
+
+/* 🎨 MODE HEADER */
+.modeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.modeIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: white;
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition-fast);
+}
+
+.studyModeCard:hover .modeIcon {
+  transform: rotate(5deg) scale(1.1);
+}
+
+.modeCount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--neutral-400);
+  transition: var(--transition-fast);
+}
+
+.studyModeCard:hover .modeCount {
+  color: var(--mode-color);
+  transform: scale(1.1);
+}
+
+/* 📝 MODE CONTENT */
+.modeContent {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.modeTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin: 0 0 1rem 0;
+  transition: var(--transition-fast);
+}
+
+.studyModeCard:hover .modeTitle {
+  color: var(--mode-color);
+}
+
+.modeDescription {
+  font-size: 1.125rem;
+  color: var(--neutral-600);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 📈 MODE PROGRESS */
+.modeProgress {
+  margin-bottom: 2rem;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.progressLabel {
+  font-size: 0.975rem;
+  color: var(--neutral-600);
+  font-weight: 600;
+}
+
+.progressPercent {
+  font-size: 0.975rem;
+  font-weight: 700;
+  color: var(--mode-color);
+  transition: var(--transition-fast);
+}
+
+.progressBar {
+  width: 100%;
+  height: 10px;
+  background: var(--neutral-200);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 5px;
+}
+
+/* 🎮 MODE ACTION */
+.modeAction {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: var(--neutral-50);
+  border-radius: var(--radius-lg);
+  transition: var(--transition-fast);
+}
+
+.studyModeCard:hover .modeAction {
+  background: var(--mode-color);
+  color: white;
+}
+
+.actionText {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.actionIcon {
+  font-size: 1.5rem;
+  transition: var(--transition-fast);
+}
+
+.studyModeCard:hover .actionIcon {
+  transform: translateX(4px);
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  .studyModesGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .pageTitle {
+    font-size: 2.5rem;
+  }
+  
+  .studyModeCard {
+    padding: 2rem 1.5rem;
+  }
+  
+  .modeTitle {
+    font-size: 1.5rem;
+  }
+  
+  .modeIcon {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+  }
+  
+  .modeCount {
+    font-size: 2rem;
+  }
+}
