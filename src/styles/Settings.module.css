@@ -1,0 +1,104 @@
+/* styles/Settings.module.css */
+
+.settingsPage {
+  min-height: calc(100vh - 4rem);
+  background: var(--neutral-50);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.pageHeader {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.pageTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin: 0 0 0.5rem 0;
+}
+
+.titleIcon {
+  font-size: 3rem;
+}
+
+.pageDescription {
+  font-size: 1.125rem;
+  color: var(--neutral-600);
+  margin: 0;
+}
+
+.message {
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+
+.message.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--secondary-green);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--secondary-red);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-1rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.settingsLayout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+}
+
+.sidebar {
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--neutral-200);
+  box-shadow: var(--shadow-md);
+}
+
+.content {
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--neutral-200);
+  box-shadow: var(--shadow-md);
+  min-height: 600px;
+}
+
+@media (max-width: 1024px) {
+  .container { padding: 1rem; }
+  .settingsLayout { grid-template-columns: 1fr; gap: 1.5rem; }
+  .sidebar { position: static; max-height: none; }
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0.5rem; }
+  .pageHeader { text-align: left; }
+  .pageTitle { justify-content: flex-start; font-size: 2rem; }
+  .titleIcon { font-size: 2.5rem; }
+  .settingsLayout { gap: 1rem; }
+}

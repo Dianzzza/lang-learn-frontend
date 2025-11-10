@@ -1,0 +1,57 @@
+/* styles/Profile.module.css */
+
+.profilePage {
+  min-height: calc(100vh - 4rem);
+  background: var(--neutral-50);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.profileHeader {
+  margin-bottom: 2rem;
+}
+
+.profileLayout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+}
+
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.rightColumn {
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+}
+
+.statsSection,
+.coursesSection,
+.activitySection {
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--neutral-200);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .container { padding: 1rem; }
+  .profileLayout { grid-template-columns: 1fr; gap: 1.5rem; }
+  .rightColumn { position: static; max-height: none; }
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0.5rem; }
+  .profileLayout { gap: 1rem; }
+}
