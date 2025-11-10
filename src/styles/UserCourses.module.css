@@ -1,0 +1,207 @@
+.container {
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin: 0;
+}
+
+.titleIcon {
+  font-size: 1.5rem;
+}
+
+.count {
+  font-size: 1rem;
+  color: var(--neutral-600);
+  font-weight: 400;
+}
+
+.viewAllBtn {
+  color: var(--primary-indigo);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.viewAllBtn:hover {
+  color: var(--primary-purple);
+}
+
+.coursesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.courseCard {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--neutral-200);
+  transition: var(--transition-fast);
+  overflow: hidden;
+  animation: slideInUp 0.3s ease-out forwards;
+  opacity: 0;
+  transform: translateY(1rem);
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.courseCard:hover {
+  border-color: var(--primary-indigo);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.courseHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--neutral-50);
+}
+
+.courseIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.courseIcon.blue {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-indigo);
+}
+
+.courseIcon.green {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--secondary-green);
+}
+
+.courseLevel {
+  padding: 0.5rem 0.75rem;
+  background: var(--primary-indigo);
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.courseContent {
+  padding: 1.5rem;
+}
+
+.courseTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin: 0 0 0.5rem 0;
+}
+
+.courseDescription {
+  font-size: 0.875rem;
+  color: var(--neutral-600);
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+}
+
+.courseProgress {
+  margin-bottom: 1rem;
+}
+
+.progressInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.progressText {
+  font-size: 0.8rem;
+  color: var(--neutral-600);
+  font-weight: 500;
+}
+
+.progressPercent {
+  font-size: 0.8rem;
+  color: var(--primary-indigo);
+  font-weight: 600;
+}
+
+.progressBar {
+  width: 100%;
+  height: 6px;
+  background: var(--neutral-200);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary-indigo);
+  transition: width 0.3s ease;
+}
+
+.courseFooter {
+  padding: 1rem 1.5rem;
+  background: var(--neutral-50);
+  border-top: 1px solid var(--neutral-200);
+}
+
+.courseMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.courseTime {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--neutral-600);
+}
+
+.timeIcon {
+  font-size: 1rem;
+}
+
+.courseDifficulty {
+  display: flex;
+  align-items: center;
+}
+
+.difficultyBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 1.5rem; }
+  .coursesGrid { grid-template-columns: 1fr; gap: 1.25rem; }
+  .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .courseHeader { padding: 1.25rem; }
+  .courseContent { padding: 1.25rem; }
+  .courseFooter { padding: 1rem 1.25rem; }
+}

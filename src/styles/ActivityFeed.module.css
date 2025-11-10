@@ -1,0 +1,341 @@
+/* COMPACT ActivityFeed - mieści się w oknie bez overflow */
+
+.container {
+  padding: 1.5rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--neutral-200);
+  flex-shrink: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin: 0;
+}
+
+.titleIcon {
+  font-size: 1.25rem;
+}
+
+.viewAllBtn {
+  color: var(--primary-indigo);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+}
+
+.viewAllBtn:hover {
+  color: var(--primary-purple);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.activityItem {
+  animation: slideInUp 0.2s ease-out forwards;
+  opacity: 0;
+  transform: translateY(0.5rem);
+  flex-shrink: 0;
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.activityContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-200);
+  transition: var(--transition-fast);
+  position: relative;
+  min-height: auto;
+}
+
+.activityContent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+.activityContent:hover {
+  border-color: var(--neutral-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.activityIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.activityIcon.blue {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-indigo);
+}
+
+.activityIcon.green {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--secondary-green);
+}
+
+.activityIcon.purple {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--primary-purple);
+}
+
+.activityIcon.orange {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--secondary-amber);
+}
+
+.activityDetails {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.activityTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--neutral-600);
+}
+
+.courseName {
+  font-weight: 500;
+  color: var(--neutral-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityDate {
+  color: var(--neutral-500);
+  font-size: 0.7rem;
+}
+
+.activityStats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+.points {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--secondary-green);
+  white-space: nowrap;
+}
+
+.pointsLabel {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--neutral-600);
+}
+
+.duration {
+  font-size: 0.7rem;
+  color: var(--neutral-600);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.accuracy {
+  font-size: 0.7rem;
+  color: var(--secondary-green);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--neutral-600);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--neutral-700);
+}
+
+.emptyDescription {
+  margin: 0 0 1.5rem 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.startBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--primary-indigo);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  font-size: 0.8rem;
+  transition: var(--transition-fast);
+}
+
+.startBtn:hover {
+  background: var(--primary-purple);
+  transform: translateY(-1px);
+}
+
+.startIcon {
+  font-size: 0.875rem;
+}
+
+.footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--neutral-200);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.viewMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+}
+
+.viewMoreBtn:hover {
+  background: var(--neutral-200);
+}
+
+.viewMoreIcon {
+  font-size: 0.875rem;
+}
+
+/* Color borders for activity types */
+.activityContent[data-type="lesson"]::before {
+  background: var(--primary-indigo);
+}
+
+.activityContent[data-type="quiz"]::before {
+  background: var(--secondary-green);
+}
+
+.activityContent[data-type="achievement"]::before {
+  background: var(--secondary-amber);
+}
+
+.activityContent[data-type="streak"]::before {
+  background: var(--primary-purple);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { 
+    padding: 1rem; 
+  }
+  
+  .activityContent { 
+    padding: 0.875rem;
+    gap: 0.75rem; 
+  }
+  
+  .activityIcon { 
+    width: 32px; 
+    height: 32px; 
+    font-size: 1rem; 
+  }
+  
+  .activityTitle {
+    font-size: 0.8rem;
+  }
+  
+  .activityMeta {
+    font-size: 0.7rem;
+  }
+  
+  .activityStats {
+    min-width: 45px;
+  }
+  
+  .points {
+    font-size: 0.8rem;
+  }
+}

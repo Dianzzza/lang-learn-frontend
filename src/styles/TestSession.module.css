@@ -1,0 +1,476 @@
+/* styles/TestSession.module.css */
+/* FORMALNA SESJA TESTOWA */
+
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  padding: 1rem;
+}
+
+.testContainer {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* 📋 INSTRUCTIONS */
+.instructionsContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 3rem;
+  box-shadow: var(--shadow-xl);
+}
+
+.instructionsHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.instructionsTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin: 0 0 1rem 0;
+}
+
+.instructionsIcon {
+  font-size: 2.5rem;
+}
+
+.instructionsSubtitle {
+  font-size: 1.25rem;
+  color: var(--neutral-600);
+  margin: 0;
+}
+
+.testOverview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.overviewCard {
+  text-align: center;
+  padding: 2rem;
+  background: var(--neutral-50);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--neutral-200);
+}
+
+.overviewIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.overviewValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-indigo);
+  margin-bottom: 0.5rem;
+}
+
+.overviewLabel {
+  font-size: 0.875rem;
+  color: var(--neutral-600);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.sectionsPreview {
+  margin-bottom: 3rem;
+}
+
+.sectionsTitle {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+}
+
+.sectionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionPreview {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--neutral-50);
+  border: 2px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+}
+
+.sectionNumber {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-indigo);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.sectionInfo {
+  flex: 1;
+}
+
+.sectionName {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin-bottom: 0.25rem;
+}
+
+.sectionDetails {
+  font-size: 0.875rem;
+  color: var(--neutral-600);
+}
+
+.sectionSkill {
+  font-size: 1.5rem;
+}
+
+.testRules {
+  margin-bottom: 3rem;
+}
+
+.rulesTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin: 0 0 1.5rem 0;
+}
+
+.rulesIcon {
+  font-size: 1.25rem;
+}
+
+.rulesList {
+  padding-left: 2rem;
+}
+
+.rulesList li {
+  font-size: 1rem;
+  color: var(--neutral-700);
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.instructionsActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.cancelBtn, .startTestBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 2rem;
+  border: none;
+  border-radius: var(--radius-xl);
+  font-weight: 700;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-decoration: none;
+}
+
+.cancelBtn {
+  background: var(--neutral-200);
+  color: var(--neutral-700);
+}
+
+.cancelBtn:hover {
+  background: var(--neutral-300);
+}
+
+.startTestBtn {
+  background: linear-gradient(135deg, var(--secondary-green) 0%, var(--secondary-emerald) 100%);
+  color: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.startTestBtn:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* 🎯 TEST INTERFACE */
+.testHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.testInfo {
+  color: white;
+}
+
+.testTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.testIcon {
+  font-size: 1.5rem;
+}
+
+.sectionProgress {
+  font-size: 0.975rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.testControls {
+  display: flex;
+  gap: 1rem;
+}
+
+.sectionTimer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-lg);
+  color: white;
+  font-weight: 700;
+  font-size: 1.125rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sectionTimer.warning {
+  background: rgba(239, 68, 68, 0.8);
+  animation: pulse 1s infinite;
+}
+
+.timerIcon {
+  font-size: 1.125rem;
+}
+
+.testQuestion {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.questionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: var(--neutral-50);
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.questionType {
+  padding: 0.5rem 1rem;
+  background: var(--secondary-amber);
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.questionPoints {
+  font-size: 0.875rem;
+  color: var(--neutral-600);
+  font-weight: 600;
+}
+
+.questionInstruction {
+  padding: 1.5rem 2rem;
+  background: rgba(245, 158, 11, 0.05);
+  border-bottom: 1px solid var(--neutral-200);
+  font-size: 0.975rem;
+  color: var(--neutral-700);
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.questionPassage {
+  padding: 2rem;
+  background: var(--neutral-50);
+  border-bottom: 1px solid var(--neutral-200);
+  font-size: 1rem;
+  color: var(--neutral-800);
+  line-height: 1.6;
+}
+
+.questionContent {
+  padding: 2rem;
+}
+
+.questionText {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin: 0 0 2rem 0;
+  line-height: 1.4;
+}
+
+.answerInterface {
+  padding: 2rem;
+  border-top: 2px solid var(--neutral-200);
+  background: var(--neutral-50);
+}
+
+/* 🎮 NAVIGATION */
+.questionNavigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+  border-top: 2px solid var(--neutral-200);
+  gap: 1rem;
+}
+
+.prevBtn, .nextBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid var(--neutral-200);
+  background: white;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.prevBtn:hover:not(:disabled), .nextBtn:hover {
+  border-color: var(--primary-indigo);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.prevBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prevIcon, .nextIcon {
+  font-size: 1rem;
+}
+
+.questionNumbers {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.questionNumber {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--neutral-200);
+  color: var(--neutral-600);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.questionNumber:hover {
+  border-color: var(--primary-indigo);
+}
+
+.questionNumber.current {
+  background: var(--primary-indigo);
+  border-color: var(--primary-indigo);
+  color: white;
+}
+
+.questionNumber.answered {
+  background: var(--secondary-green);
+  border-color: var(--secondary-green);
+  color: white;
+}
+
+/* ⏳ LOADING */
+.loadingContainer {
+  text-align: center;
+  color: white;
+  padding: 4rem 2rem;
+}
+
+.loadingIcon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  animation: spin 2s linear infinite;
+}
+
+.loadingText {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 768px) {
+  .instructionsContainer {
+    padding: 2rem 1.5rem;
+  }
+  
+  .testOverview {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .instructionsTitle {
+    font-size: 2rem;
+  }
+  
+  .instructionsActions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .testHeader {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+  
+  .questionNavigation {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .questionNumbers {
+    order: -1;
+  }
+}
