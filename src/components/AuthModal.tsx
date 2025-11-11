@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +6,9 @@ import RegisterForm from './RegisterForm';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import ResetPasswordForm from './ResetPasswordForm';
 import styles from '../styles/AuthModal.module.css';
+
+// jeśli masz api.ts w lib/, to importuj stamtąd:
+import { apiRequest } from '../lib/api';
 
 interface UserData {
   id: number;
@@ -26,71 +28,62 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [resetEmail, setResetEmail] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
+  // blokuje scrollowanie tła
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
+  // ESC zamyka modal
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
     };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
+    if (isOpen) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>): void => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
   };
 
-  const switchMode = (newMode: AuthMode): void => {
+  const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
     setIsLoading(false);
   };
 
+  // =====================
+  // API Handlers
+  // =====================
+
   const handleForgotPasswordSubmit = async (email: string): Promise<void> => {
     setIsLoading(true);
-    
     try {
-      // Symulacja API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // prawdziwe wywołanie backendu
+      await apiRequest('/api/auth/request-password-reset', 'POST', { email });
       setResetEmail(email);
       setMode('reset-sent');
-    } catch (error) {
-      console.error('Error sending reset email:', error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error:', error.message);
+        alert(error.message);
+      } else {
+        alert('Wystąpił nieznany błąd.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLoginSuccess = (userData: UserData): void => {
-    // Tutaj będzie logika po udanym logowaniu
+  const handleLoginSuccess = (userData: UserData) => {
     console.log('Login successful:', userData);
     onClose();
   };
 
-  const handleRegisterSuccess = (userData: UserData): void => {
-    // Tutaj będzie logika po udanej rejestracji
+  const handleRegisterSuccess = (userData: UserData) => {
     console.log('Registration successful:', userData);
     onClose();
   };
@@ -99,18 +92,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
   const getTitle = (): string => {
     switch (mode) {
-      case 'login':
-        return 'Zaloguj się';
-      case 'register':
-        return 'Załóż konto';
-      case 'forgot-password':
-        return 'Resetuj hasło';
-      case 'reset-sent':
-        return 'Sprawdź email';
-      case 'reset-password':
-        return 'Nowe hasło';
-      default:
-        return 'Autoryzacja';
+      case 'login': return 'Zaloguj się';
+      case 'register': return 'Załóż konto';
+      case 'forgot-password': return 'Resetuj hasło';
+      case 'reset-sent': return 'Sprawdź email';
+      case 'reset-password': return 'Nowe hasło';
+      default: return 'Autoryzacja';
     }
   };
 
@@ -127,7 +114,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
         <div className={styles.header}>
           <h2 className={styles.title}>{getTitle()}</h2>
-          
+
           {(mode === 'login' || mode === 'register') && (
             <div className={styles.modeTabs}>
               <button
@@ -180,9 +167,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 Wysłaliśmy link do resetowania hasła na adres{' '}
                 <strong>{resetEmail}</strong>.
               </p>
-              <p>
-                Kliknij w link, aby zresetować hasło.
-              </p>
+              <p>Kliknij w link, aby zresetować hasło.</p>
               <button
                 className={styles.backButton}
                 onClick={() => switchMode('login')}
