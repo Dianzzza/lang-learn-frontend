@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,11 +9,15 @@ interface ForgotPasswordFormProps {
   isLoading: boolean;
 }
 
-export default function ForgotPasswordForm({ onSubmit, onBack, isLoading }: ForgotPasswordFormProps) {
-  const [email, setEmail] = useState<string>('');
-  const [error, setError] = useState<string>('');
+export default function ForgotPasswordForm({
+  onSubmit,
+  onBack,
+  isLoading,
+}: ForgotPasswordFormProps) {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     if (error) setError('');
   };
@@ -31,7 +34,7 @@ export default function ForgotPasswordForm({ onSubmit, onBack, isLoading }: Forg
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (validateEmail()) {
       await onSubmit(email);

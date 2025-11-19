@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import styles from '../styles/AuthForms.module.css';
+import { apiRequest } from '../lib/api';
 
 interface UserData {
   id: number;
@@ -89,27 +90,37 @@ export default function RegisterForm({ onSuccess, isLoading, setIsLoading }: Reg
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    
-    setIsLoading(true);
-    try {
-      // Tutaj będzie API call do backendu
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      e.preventDefault();
+      if (!validateForm()) return;
       
-      const userData: UserData = {
-        id: 2,
-        username: formData.username,
-        email: formData.email
-      };
-      
-      onSuccess(userData);
-    } catch (error) {
-      setErrors({ general: 'Wystąpił błąd podczas rejestracji. Spróbuj ponownie.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      try {
+        const response = await apiRequest<{ message: string; userId: number }>('/api/auth/register', 'POST', {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+        });
+
+        // Backend zwraca message + userId, więc pobieramy je stąd
+        const userData: UserData = {
+          id: response.userId,
+          username: formData.username,
+          email: formData.email,
+        };
+
+        onSuccess(userData);
+      } catch (error) {
+        console.error('Register error:', error);
+        setErrors({
+          general:
+            (error as Error).message ||
+            'Wystąpił błąd podczas rejestracji. Spróbuj ponownie.',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>

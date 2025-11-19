@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import styles from '../styles/AuthForms.module.css';
+import { apiRequest } from '../lib/api';
 
 interface UserData {
   id: number;
@@ -72,25 +73,27 @@ export default function LoginForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
     try {
-      // Tutaj będzie API call do backendu
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Symulacja odpowiedzi
-      const userData: UserData = {
-        id: 1,
-        username: 'Anna',
-        email: formData.email
-      };
-      
-      onSuccess(userData);
+      const response = await apiRequest<{ token: string; user: UserData }>('/api/auth/login', 'POST', {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (response.token) {
+        // Zapisz token w localStorage do dalszego użytku
+        localStorage.setItem('token', response.token);
+        onSuccess(response.user);
+      } else {
+        setErrors({ general: 'Nieprawidłowa odpowiedź serwera' });
+      }
     } catch (error) {
-      setErrors({ general: 'Nieprawidłowy email lub hasło' });
+      console.error('Login error:', error);
+      setErrors({ general: (error as Error).message || 'Nieprawidłowy email lub hasło' });
     } finally {
       setIsLoading(false);
     }
