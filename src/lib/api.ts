@@ -26,6 +26,7 @@ export async function apiRequest<T = unknown>(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+console.log("API CALL:", `${BASE}${endpoint}`);
 
   const res = await fetch(`${BASE}${endpoint}`, {
     method,

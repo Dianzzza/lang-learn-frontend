@@ -1,18 +1,11 @@
-
+// frontend/src/components/Header.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Header.module.css';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  points?: number;
-  streak_days?: number;
-}
+import { useAuth } from '../context/AuthContext'; // <--- 1. Importujemy kontekst
 
 interface NavigationItem {
   name: string;
@@ -20,14 +13,14 @@ interface NavigationItem {
   icon: string;
 }
 
+// Uprościliśmy propsy, bo user i logout bierzemy z kontekstu
 interface HeaderProps {
-  user: User | null;
-  onAuthOpen: (mode?: string) => void;
-  onLogout: () => void;
+  onAuthOpen: (mode?: 'login' | 'register') => void;
   currentPath: string;
 }
 
-export default function Header({ user, onAuthOpen, onLogout, currentPath }: HeaderProps) {
+export default function Header({ onAuthOpen, currentPath }: HeaderProps) {
+  const { user, logout } = useAuth(); // <--- 2. Wyciągamy usera i funkcję logout
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const router = useRouter();
 
@@ -39,6 +32,11 @@ export default function Header({ user, onAuthOpen, onLogout, currentPath }: Head
     setIsMenuOpen(false);
   };
 
+  const handleLogoutClick = () => {
+    closeMenu();
+    logout(); // To automatycznie przeniesie Cię na Landing Page (zdefiniowane w AuthContext)
+  };
+
   const navigationItems: NavigationItem[] = [
     { name: 'Nauka', href: '/study', icon: '📚' },
     { name: 'Testy', href: '/tests', icon: '📝' },
@@ -46,7 +44,6 @@ export default function Header({ user, onAuthOpen, onLogout, currentPath }: Head
     { name: 'Ranking', href: '/ranking', icon: '🏆' }
   ];
 
-  // NAPRAWIONY - dodany null/undefined check
   const isActivePath = (href: string): boolean => {
     if (!currentPath) return false;
     return currentPath === href || currentPath.startsWith(href + '/');
@@ -88,8 +85,10 @@ export default function Header({ user, onAuthOpen, onLogout, currentPath }: Head
           {/* Right Section */}
           <div className={styles.rightSection}>
             {user ? (
+              // WIDOK DLA ZALOGOWANEGO
               <div className={styles.userProfileWrapper}>
                 <Link href="/profile" className={styles.userProfile} onClick={closeMenu}>
+                  {/* Generujemy avatar z inicjałów, jeśli user nie ma własnego */}
                   <img
                     src={`https://ui-avatars.com/api/?name=${user.username}&background=6366f1&color=fff&size=32`}
                     alt={user.username}
@@ -97,15 +96,17 @@ export default function Header({ user, onAuthOpen, onLogout, currentPath }: Head
                   />
                   <span className={styles.username}>{user.username}</span>
                 </Link>
+                
                 <button
                   className={styles.logoutBtn}
-                  onClick={onLogout}
+                  onClick={handleLogoutClick}
                   title="Wyloguj się"
                 >
                   🚪
                 </button>
               </div>
             ) : (
+              // WIDOK DLA NIEZALOGOWANEGO (Teoretycznie rzadko widoczny, bo chroni nas LandingPage, ale warto mieć)
               <button
                 className={styles.loginButton}
                 onClick={() => onAuthOpen('login')}
@@ -115,7 +116,7 @@ export default function Header({ user, onAuthOpen, onLogout, currentPath }: Head
               </button>
             )}
 
-            {/* Hamburger Menu */}
+            {/* Hamburger Menu (Mobile) */}
             <button
               className={`${styles.hamburger} ${isMenuOpen ? styles.open : ''}`}
               onClick={toggleMenu}
@@ -148,7 +149,17 @@ export default function Header({ user, onAuthOpen, onLogout, currentPath }: Head
               </Link>
             ))}
             
-            {!user && (
+            <div className={styles.mobileMenuDivider}></div>
+
+            {user ? (
+               <button
+               className={styles.mobileLoginButton}
+               onClick={handleLogoutClick}
+             >
+               <span className={styles.mobileLoginIcon}>🚪</span>
+               <span className={styles.mobileLoginText}>Wyloguj się</span>
+             </button>
+            ) : (
               <button
                 className={styles.mobileLoginButton}
                 onClick={() => {
