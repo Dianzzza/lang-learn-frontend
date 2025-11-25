@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import styles from '../styles/AuthForms.module.css';
 import { apiRequest } from '../lib/api';
+import { useAuth } from '../context/AuthContext'; // <--- DODAJ TO
 
 interface UserData {
   id: number;
@@ -37,6 +38,7 @@ export default function LoginForm({
   isLoading, 
   setIsLoading 
 }: LoginFormProps) {
+  const { login } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: ''
@@ -79,14 +81,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> 
 
     setIsLoading(true);
     try {
-      const response = await apiRequest<{ token: string; user: UserData }>('/api/auth/login', 'POST', {
+      const response = await apiRequest<{ token: string; user: UserData }>('api/auth/login', 'POST', {
         email: formData.email,
         password: formData.password,
       });
 
       if (response.token) {
         // Zapisz token w localStorage do dalszego użytku
-        localStorage.setItem('token', response.token);
+        login(response.token, response.user);
         onSuccess(response.user);
       } else {
         setErrors({ general: 'Nieprawidłowa odpowiedź serwera' });

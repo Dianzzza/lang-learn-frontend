@@ -43,7 +43,7 @@ export default function ResetPasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await apiRequest<{ message: string }>("/api/auth/reset-password", "POST", {
+      const res = await apiRequest<{ message: string }>("api/auth/reset-password", "POST", {
         token,
         newPassword: password,
       });
