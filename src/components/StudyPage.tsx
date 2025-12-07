@@ -1,17 +1,48 @@
-// pages/study.js lub components/StudyPage.jsx
+// src/components/StudyPage.tsx
 'use client';
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Header from '../components/Header';
-import StudyFilters from '../components/StudyFilters';
-import StudySearch from '../components/StudySearch';
-import StudyContent from '../components/StudyContent';
-import StudyProgress from '../components/StudyProgress';
-import styles from '../styles/StudyPage.module.css';
+import Header from './Header';
+import StudyFilters from './StudyFilters';
+import StudySearch from './StudySearch';
+import StudyContent from './StudyContent';
+import StudyProgress from './StudyProgress';
+import styles from '@/styles/StudyPage.module.css';
 
-export default function StudyPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilters, setActiveFilters] = useState({
+interface StudyMaterial {
+  id: number;
+  name: string;
+  description: string;
+  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  category: string;
+  type: string;
+  status: string;
+  difficulty: 'Łatwe' | 'Średnie' | 'Trudne';
+  duration: string;
+  progress: number;
+  totalLessons: number;
+  completedLessons: number;
+  lastStudied: string | null;
+  rating: number;
+  studentsCount: number;
+  isLocked: boolean;
+  isFavorite: boolean;
+  thumbnail: string;
+}
+
+interface ActiveFilters {
+  levels: string[];
+  categories: string[];
+  types: string[];
+  status: string[];
+  difficulty: string[];
+  duration: string[];
+}
+
+export default function StudyPage(): JSX.Element {
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     levels: [],
     categories: [],
     types: [],
@@ -19,13 +50,13 @@ export default function StudyPage() {
     difficulty: [],
     duration: []
   });
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
-  const [sortBy, setSortBy] = useState('name'); // 'name', 'progress', 'level', 'recent'
-  const [filteredMaterials, setFilteredMaterials] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<'name' | 'progress' | 'level' | 'recent'>('name');
+  const [filteredMaterials, setFilteredMaterials] = useState<StudyMaterial[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Przykładowe dane materiałów
-  const studyMaterials = [
+  const studyMaterials: StudyMaterial[] = [
     {
       id: 1,
       name: 'Podstawy - Powitania',
@@ -154,7 +185,7 @@ export default function StudyPage() {
 
     // Filtrowanie po wyszukiwaniu
     if (searchTerm) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         material.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -162,42 +193,42 @@ export default function StudyPage() {
 
     // Filtrowanie po poziomach
     if (activeFilters.levels.length > 0) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         activeFilters.levels.includes(material.level)
       );
     }
 
     // Filtrowanie po kategoriach
     if (activeFilters.categories.length > 0) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         activeFilters.categories.includes(material.category)
       );
     }
 
     // Filtrowanie po typach
     if (activeFilters.types.length > 0) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         activeFilters.types.includes(material.type)
       );
     }
 
     // Filtrowanie po statusie
     if (activeFilters.status.length > 0) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         activeFilters.status.includes(material.status)
       );
     }
 
     // Filtrowanie po trudności
     if (activeFilters.difficulty.length > 0) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         activeFilters.difficulty.includes(material.difficulty)
       );
     }
 
     // Filtrowanie po czasie trwania
     if (activeFilters.duration.length > 0) {
-      filtered = filtered.filter(material => 
+      filtered = filtered.filter(material =>
         activeFilters.duration.includes(material.duration)
       );
     }
@@ -216,7 +247,7 @@ export default function StudyPage() {
           if (!a.lastStudied && !b.lastStudied) return 0;
           if (!a.lastStudied) return 1;
           if (!b.lastStudied) return -1;
-          return new Date(b.lastStudied) - new Date(a.lastStudied);
+          return new Date(b.lastStudied).getTime() - new Date(a.lastStudied).getTime();
         default:
           return 0;
       }
@@ -225,7 +256,7 @@ export default function StudyPage() {
     setFilteredMaterials(filtered);
   }, [searchTerm, activeFilters, sortBy]);
 
-  const handleFilterChange = (filterType, value) => {
+  const handleFilterChange = (filterType: keyof ActiveFilters, value: string): void => {
     setActiveFilters(prev => ({
       ...prev,
       [filterType]: prev[filterType].includes(value)
@@ -234,7 +265,7 @@ export default function StudyPage() {
     }));
   };
 
-  const clearAllFilters = () => {
+  const clearAllFilters = (): void => {
     setActiveFilters({
       levels: [],
       categories: [],
@@ -246,105 +277,99 @@ export default function StudyPage() {
     setSearchTerm('');
   };
 
-  const activeFilterCount = Object.values(activeFilters).reduce(
-    (count, filters) => count + filters.length, 0
+  const activeFilterCount: number = Object.values(activeFilters).reduce(
+    (count, filters) => count + filters.length,
+    0
   );
 
   return (
     <>
       <Head>
-        <title>Nauka - LangLearn</title>
-        <meta name="description" content="Materiały do nauki języka angielskiego" />
+        <title>Nauka - Lang Learn</title>
+        <meta name="description" content="Wybierz materiały i kontynuuj swoją naukę" />
       </Head>
 
-      <div className={styles.page}>
-        <Header />
-        
-        <main className={styles.main}>
-          <div className={styles.container}>
-            {/* Header sekcji */}
-            <div className={styles.pageHeader}>
-              <div className={styles.titleSection}>
-                <h1 className={styles.pageTitle}>
-                  <span className={styles.titleIcon}>📚</span>
-                  Nauka
-                </h1>
-                <p className={styles.pageSubtitle}>
-                  Wybierz materiały i kontynuuj swoją naukę
-                </p>
-              </div>
-              
-              <StudyProgress studyMaterials={studyMaterials} />
-            </div>
+      <Header />
 
-            {/* Pasek wyszukiwania i kontrolki */}
-            <div className={styles.controlsSection}>
-              <StudySearch 
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+      <main className={styles.studyPage}>
+        <div className={styles.container}>
+          {/* Header sekcji */}
+          <div className={styles.header}>
+            <h1>📚 Nauka</h1>
+            <p>Wybierz materiały i kontynuuj swoją naukę</p>
+          </div>
+
+          {/* Wyszukiwanie */}
+          <StudySearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+
+          <div className={styles.mainContent}>
+            {/* Filtry */}
+            <aside className={styles.sidebar}>
+              <StudyFilters
+                activeFilters={activeFilters}
+                onFilterChange={handleFilterChange}
+                onClearFilters={clearAllFilters}
+                activeFilterCount={activeFilterCount}
               />
-              
-              <div className={styles.viewControls}>
-                <div className={styles.sortControls}>
-                  <label htmlFor="sortBy">Sortuj:</label>
-                  <select 
-                    id="sortBy"
-                    value={sortBy} 
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className={styles.sortSelect}
-                  >
-                    <option value="name">Nazwa A-Z</option>
-                    <option value="progress">Postęp</option>
-                    <option value="level">Poziom</option>
-                    <option value="recent">Ostatnio studiowane</option>
-                  </select>
-                </div>
-                
-                <div className={styles.viewModeToggle}>
+            </aside>
+
+            {/* Zawartość */}
+            <section className={styles.content}>
+              {/* Kontrolki widoku */}
+              <div className={styles.controls}>
+                <div className={styles.viewToggle}>
                   <button
-                    className={`${styles.viewModeBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                    className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.active : ''}`}
                     onClick={() => setViewMode('grid')}
                     title="Widok siatki"
                   >
                     ⊞
                   </button>
                   <button
-                    className={`${styles.viewModeBtn} ${viewMode === 'list' ? styles.active : ''}`}
+                    className={`${styles.viewBtn} ${viewMode === 'list' ? styles.active : ''}`}
                     onClick={() => setViewMode('list')}
                     title="Widok listy"
                   >
                     ☰
                   </button>
                 </div>
-              </div>
-            </div>
 
-            {/* Layout główny */}
-            <div className={styles.studyLayout}>
-              {/* Panel filtrów */}
-              <div className={styles.filtersPanel}>
-                <StudyFilters
-                  activeFilters={activeFilters}
-                  onFilterChange={handleFilterChange}
-                  onClearAll={clearAllFilters}
-                  activeFilterCount={activeFilterCount}
-                />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'name' | 'progress' | 'level' | 'recent')}
+                  className={styles.sortSelect}
+                >
+                  <option value="name">Sortuj: Nazwa</option>
+                  <option value="progress">Sortuj: Postęp</option>
+                  <option value="level">Sortuj: Poziom</option>
+                  <option value="recent">Sortuj: Ostatnio</option>
+                </select>
               </div>
 
-              {/* Główna zawartość */}
-              <div className={styles.contentPanel}>
-                <StudyContent
-                  materials={filteredMaterials}
-                  viewMode={viewMode}
-                  isLoading={isLoading}
-                  searchTerm={searchTerm}
-                  activeFilterCount={activeFilterCount}
-                />
+              {/* Wyniki */}
+              <div className={`${styles.materialsContainer} ${styles[viewMode]}`}>
+                {filteredMaterials.length > 0 ? (
+                  filteredMaterials.map((material) => (
+                    <StudyContent key={material.id} material={material} />
+                  ))
+                ) : (
+                  <div className={styles.emptyState}>
+                    <p>Brak materiałów pasujących do Twoich kryteriów</p>
+                    <button onClick={clearAllFilters} className={styles.clearBtn}>
+                      Wyczyść filtry
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            </section>
           </div>
-        </main>
-      </div>
+
+          {/* Postęp użytkownika */}
+          {filteredMaterials.length > 0 && (
+            <StudyProgress materials={filteredMaterials} />
+          )}
+        </div>
+      </main>
     </>
   );
 }

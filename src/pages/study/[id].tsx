@@ -1,3 +1,4 @@
+// src/pages/study/[id].tsx
 
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';

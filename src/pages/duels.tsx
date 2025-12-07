@@ -1,3 +1,5 @@
+// src/pages/duels.tsx
+
 
 import Layout from '../components/Layout';
 import styles from '../styles/PlaceholderPage.module.css';

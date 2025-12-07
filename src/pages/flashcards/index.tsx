@@ -1,3 +1,4 @@
+// src/pages/flashcards/index.tsx
 
 'use client';
 

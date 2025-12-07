@@ -1,333 +1,276 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from '../styles/SettingsForm.module.css';
+import { updateUserSettings } from '../lib/api';
 
-// TypeScript types
-interface PrivacySettings {
-  profileVisibility: 'public' | 'friends' | 'private';
-  showProgress: boolean;
-  showActivity: boolean;
-  allowFriendRequests: boolean;
-  emailNewsletters: boolean;
+interface UserSettings {
+  id: number;
+  userId: number;
+  dailyGoal: number;
+  difficulty: string;
+  notificationsEnabled: boolean;
+  emailNotifications: boolean;
+  profilePublic: boolean;
+  showStats: boolean;
 }
 
 interface PrivacySettingsProps {
-  settings: PrivacySettings;
-  onSave: (data: PrivacySettings) => Promise<void>;
-  isLoading: boolean;
-  onExportData: () => void;
-  onDeleteAccount: () => void;
+  userId: number;
+  settings: UserSettings | null;
+  onSuccess?: () => void;
 }
 
-export default function PrivacySettings({ 
-  settings, 
-  onSave, 
-  isLoading, 
-  onExportData, 
-  onDeleteAccount 
-}: PrivacySettingsProps) {
-  const [formData, setFormData] = useState<PrivacySettings>(settings);
-  const [hasChanges, setHasChanges] = useState<boolean>(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+export default function PrivacySettings({ userId, settings, onSuccess }: PrivacySettingsProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleInputChange = (field: keyof PrivacySettings, value: any): void => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setHasChanges(true);
-  };
+  // Formy
+  const [profilePublic, setProfilePublic] = useState(true);
+  const [showStats, setShowStats] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    
-    try {
-      await onSave(formData);
-      setHasChanges(false);
-    } catch (error) {
-      console.error('Error saving privacy settings:', error);
+  // Załaduj ustawienia
+  useEffect(() => {
+    if (settings) {
+      setProfilePublic(settings.profilePublic ?? true);
+      setShowStats(settings.showStats ?? true);
     }
-  };
+  }, [settings]);
 
-  const getVisibilityDescription = (visibility: PrivacySettings['profileVisibility']): string => {
-    switch (visibility) {
-      case 'public': return 'Wszyscy użytkownicy mogą zobaczyć Twój profil';
-      case 'friends': return 'Tylko Twoi znajomi mogą zobaczyć Twój profil';
-      case 'private': return 'Tylko Ty możesz zobaczyć swój profil';
+  const handleToggle = async (field: 'profile' | 'stats') => {
+    const newProfilePublic = field === 'profile' ? !profilePublic : profilePublic;
+    const newShowStats = field === 'stats' ? !showStats : showStats;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Brak tokena autoryzacji');
+      }
+
+      await updateUserSettings(userId, token, {
+        profilePublic: newProfilePublic,
+        showStats: newShowStats,
+      });
+
+      if (field === 'profile') {
+        setProfilePublic(newProfilePublic);
+      } else {
+        setShowStats(newShowStats);
+      }
+
+      setSuccess(true);
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Ukryj komunikat sukcesu po 3 sekundach
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Nieznany błąd';
+      setError(message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>
-          <span className={styles.titleIcon}>🛡️</span>
-          Prywatność i dane
-        </h2>
-        <p className={styles.description}>
-          Kontroluj widoczność swoich danych i zarządzaj kontem
+        <h2>Prywatność</h2>
+        <p>Kontroluj widoczność Twojego profilu i danych</p>
+      </div>
+
+      {/* Informacyjny box */}
+      <div 
+        style={{
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px'
+        }}
+      >
+        <p style={{ margin: 0, color: '#0369a1' }}>
+          <strong>ℹ️ Informacja:</strong> Te ustawienia kontrolują, kto może zobaczyć Twój profil i postęp w nauce.
         </p>
       </div>
 
-      <div className={styles.sectionsContainer}>
-        
-        {/* Privacy Settings */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <span className={styles.sectionIcon}>👁️</span>
-              Widoczność profilu
-            </h3>
-          </div>
-
-          <form onSubmit={handleSubmit} className={styles.form}>
-            
-            {/* Profile Visibility */}
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                <span className={styles.labelText}>Kto może zobaczyć Twój profil?</span>
-              </label>
-              
-              <div className={styles.toggleList}>
-                {(['public', 'friends', 'private'] as const).map((visibility) => (
-                  <label
-                    key={visibility}
-                    className={`${styles.toggleItem} ${formData.profileVisibility === visibility ? styles.selected : ''}`}
-                  >
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value={visibility}
-                      checked={formData.profileVisibility === visibility}
-                      onChange={(e) => handleInputChange('profileVisibility', e.target.value)}
-                      className={styles.radioInput}
-                    />
-                    <div className={styles.toggleInfo}>
-                      <div className={styles.toggleIcon}>
-                        {visibility === 'public' ? '🌍' : visibility === 'friends' ? '👥' : '🔒'}
-                      </div>
-                      <div className={styles.toggleText}>
-                        <div className={styles.toggleTitle}>
-                          {visibility === 'public' ? 'Publiczny' : 
-                           visibility === 'friends' ? 'Znajomi' : 'Prywatny'}
-                        </div>
-                        <div className={styles.toggleDescription}>
-                          {getVisibilityDescription(visibility)}
-                        </div>
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Profile Details Toggles */}
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                <span className={styles.labelText}>Szczegóły profilu</span>
-              </label>
-              
-              <div className={styles.toggleList}>
-                
-                <div className={styles.toggleItem}>
-                  <div className={styles.toggleInfo}>
-                    <span className={styles.toggleIcon}>📈</span>
-                    <div className={styles.toggleText}>
-                      <div className={styles.toggleTitle}>Pokaż postęp nauki</div>
-                      <div className={styles.toggleDescription}>Statystyki i ukończone kursy</div>
-                    </div>
-                  </div>
-                  <label className={styles.toggleLabel}>
-                    <input
-                      type="checkbox"
-                      checked={formData.showProgress}
-                      onChange={() => handleInputChange('showProgress', !formData.showProgress)}
-                      className={styles.toggleInput}
-                    />
-                    <div className={styles.toggle}>
-                      <div className={styles.toggleSlider}></div>
-                    </div>
-                  </label>
-                </div>
-
-                <div className={styles.toggleItem}>
-                  <div className={styles.toggleInfo}>
-                    <span className={styles.toggleIcon}>⚡</span>
-                    <div className={styles.toggleText}>
-                      <div className={styles.toggleTitle}>Pokaż ostatnią aktywność</div>
-                      <div className={styles.toggleDescription}>Historia ostatnich lekcji</div>
-                    </div>
-                  </div>
-                  <label className={styles.toggleLabel}>
-                    <input
-                      type="checkbox"
-                      checked={formData.showActivity}
-                      onChange={() => handleInputChange('showActivity', !formData.showActivity)}
-                      className={styles.toggleInput}
-                    />
-                    <div className={styles.toggle}>
-                      <div className={styles.toggleSlider}></div>
-                    </div>
-                  </label>
-                </div>
-
-                <div className={styles.toggleItem}>
-                  <div className={styles.toggleInfo}>
-                    <span className={styles.toggleIcon}>👋</span>
-                    <div className={styles.toggleText}>
-                      <div className={styles.toggleTitle}>Pozwól na zaproszenia do znajomych</div>
-                      <div className={styles.toggleDescription}>Inni mogą wysyłać zaproszenia</div>
-                    </div>
-                  </div>
-                  <label className={styles.toggleLabel}>
-                    <input
-                      type="checkbox"
-                      checked={formData.allowFriendRequests}
-                      onChange={() => handleInputChange('allowFriendRequests', !formData.allowFriendRequests)}
-                      className={styles.toggleInput}
-                    />
-                    <div className={styles.toggle}>
-                      <div className={styles.toggleSlider}></div>
-                    </div>
-                  </label>
-                </div>
-
-                <div className={styles.toggleItem}>
-                  <div className={styles.toggleInfo}>
-                    <span className={styles.toggleIcon}>📬</span>
-                    <div className={styles.toggleText}>
-                      <div className={styles.toggleTitle}>Newsletter</div>
-                      <div className={styles.toggleDescription}>Porady i nowości od LangLearn</div>
-                    </div>
-                  </div>
-                  <label className={styles.toggleLabel}>
-                    <input
-                      type="checkbox"
-                      checked={formData.emailNewsletters}
-                      onChange={() => handleInputChange('emailNewsletters', !formData.emailNewsletters)}
-                      className={styles.toggleInput}
-                    />
-                    <div className={styles.toggle}>
-                      <div className={styles.toggleSlider}></div>
-                    </div>
-                  </label>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Submit Privacy */}
-            <div className={styles.actions}>
-              <button
-                type="submit"
-                disabled={!hasChanges || isLoading}
-                className={`${styles.saveBtn} ${!hasChanges ? styles.disabled : ''}`}
-              >
-                {isLoading ? (
-                  <>
-                    <span className={styles.spinner}></span>
-                    Zapisywanie...
-                  </>
-                ) : (
-                  <>
-                    <span className={styles.saveIcon}>💾</span>
-                    Zapisz ustawienia prywatności
-                  </>
-                )}
-              </button>
-            </div>
-
-          </form>
-        </div>
-
-        {/* Data Management */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <span className={styles.sectionIcon}>💾</span>
-              Zarządzanie danymi
-            </h3>
-            <p className={styles.sectionDescription}>
-              Eksportuj lub usuń swoje dane
-            </p>
-          </div>
-
-          <div className={styles.toggleList}>
-            <button
-              onClick={onExportData}
-              className={styles.toggleItem}
-            >
-              <div className={styles.toggleInfo}>
-                <span className={styles.toggleIcon}>📄</span>
-                <div className={styles.toggleText}>
-                  <div className={styles.toggleTitle}>Eksportuj dane</div>
-                  <div className={styles.toggleDescription}>
-                    Pobierz kopię swoich danych w formacie JSON
-                  </div>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Account Deletion */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <span className={styles.sectionIcon}>⚠️</span>
-              Strefa niebezpieczna
-            </h3>
-            <p className={styles.sectionDescription}>
-              Nieodwracalne akcje na koncie
-            </p>
-          </div>
-
-          <div className={styles.toggleList}>
-            {!showDeleteConfirm ? (
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className={`${styles.toggleItem} ${styles.dangerItem}`}
-              >
-                <div className={styles.toggleInfo}>
-                  <span className={styles.toggleIcon}>🗑️</span>
-                  <div className={styles.toggleText}>
-                    <div className={styles.toggleTitle}>Usuń konto</div>
-                    <div className={styles.toggleDescription}>
-                      Trwale usuń swoje konto i wszystkie dane
-                    </div>
-                  </div>
-                </div>
-              </button>
+      {/* Widoczność profilu */}
+      <div
+        style={{
+          backgroundColor: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
+            👁️ Profil publiczny
+          </h3>
+          <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px' }}>
+            Pozwól innym użytkownikom widzieć Twój profil
+          </p>
+          <div style={{ fontSize: '12px', color: '#999' }}>
+            {profilePublic ? (
+              <span>✅ Profil jest <strong>publiczny</strong> - wszyscy mogą go zobaczyć</span>
             ) : (
-              <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <h4 className={styles.sectionTitle}>
-                    <span className={styles.sectionIcon}>⚠️</span>
-                    Czy na pewno chcesz usunąć konto?
-                  </h4>
-                  <p className={styles.sectionDescription}>
-                    Ta akcja jest nieodwracalna. Wszystkie dane zostaną trwale usunięte.
-                  </p>
-                </div>
-                
-                <div className={styles.actions}>
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className={styles.cancelBtn}
-                  >
-                    Anuluj
-                  </button>
-                  <button
-                    onClick={onDeleteAccount}
-                    className={styles.dangerBtn}
-                  >
-                    Tak, usuń konto
-                  </button>
-                </div>
-              </div>
+              <span>🔒 Profil jest <strong>prywatny</strong> - tylko Ty możesz go zobaczyć</span>
             )}
           </div>
         </div>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={profilePublic}
+            onChange={() => handleToggle('profile')}
+            disabled={loading}
+          />
+          <span className={styles.toggleSwitch} />
+        </label>
+      </div>
 
+      {/* Wyświetlanie statystyk */}
+      <div
+        style={{
+          backgroundColor: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
+            📊 Wyświetlaj statystyki
+          </h3>
+          <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px' }}>
+            Pozwól innym zobaczyć Twoje postępy i osiągnięcia
+          </p>
+          <div style={{ fontSize: '12px', color: '#999' }}>
+            {showStats ? (
+              <span>✅ Statystyki są <strong>widoczne</strong> - inni mogą zobaczyć Twoje osiągnięcia</span>
+            ) : (
+              <span>🔒 Statystyki są <strong>ukryte</strong> - tylko Ty widzisz swoje dane</span>
+            )}
+          </div>
+        </div>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={showStats}
+            onChange={() => handleToggle('stats')}
+            disabled={loading}
+          />
+          <span className={styles.toggleSwitch} />
+        </label>
+      </div>
+
+      {/* Komunikaty */}
+      {error && (
+        <div className={styles.alert} style={{ backgroundColor: '#fee', color: '#c33', marginBottom: '16px' }}>
+          ❌ {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className={styles.alert} style={{ backgroundColor: '#efe', color: '#3c3', marginBottom: '16px' }}>
+          ✅ Ustawienia prywatności zmienione!
+        </div>
+      )}
+
+      {/* Macierz widoczności */}
+      <div
+        style={{
+          backgroundColor: '#fafafa',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px'
+        }}
+      >
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>
+          📋 Co inne osoby mogą zobaczyć:
+        </h3>
+        
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
+              <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: '600' }}>Element</th>
+              <th style={{ textAlign: 'center', padding: '8px 0', fontWeight: '600' }}>Widoczny?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+              <td style={{ padding: '10px 0', color: '#666' }}>Nazwa wyświetlana</td>
+              <td style={{ textAlign: 'center', color: profilePublic ? '#3c3' : '#999' }}>
+                {profilePublic ? '✅' : '❌'}
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+              <td style={{ padding: '10px 0', color: '#666' }}>Bio / Opis</td>
+              <td style={{ textAlign: 'center', color: profilePublic ? '#3c3' : '#999' }}>
+                {profilePublic ? '✅' : '❌'}
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+              <td style={{ padding: '10px 0', color: '#666' }}>Awatar</td>
+              <td style={{ textAlign: 'center', color: profilePublic ? '#3c3' : '#999' }}>
+                {profilePublic ? '✅' : '❌'}
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+              <td style={{ padding: '10px 0', color: '#666' }}>Punkty i rankingi</td>
+              <td style={{ textAlign: 'center', color: profilePublic && showStats ? '#3c3' : '#999' }}>
+                {profilePublic && showStats ? '✅' : '❌'}
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+              <td style={{ padding: '10px 0', color: '#666' }}>Postęp w kursach</td>
+              <td style={{ textAlign: 'center', color: profilePublic && showStats ? '#3c3' : '#999' }}>
+                {profilePublic && showStats ? '✅' : '❌'}
+              </td>
+            </tr>
+            <tr>
+              <td style={{ padding: '10px 0', color: '#666' }}>Osiągnięcia</td>
+              <td style={{ textAlign: 'center', color: profilePublic && showStats ? '#3c3' : '#999' }}>
+                {profilePublic && showStats ? '✅' : '❌'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Zalecenia */}
+      <div 
+        style={{
+          backgroundColor: '#fff3e0',
+          border: '1px solid #ffe0b2',
+          borderRadius: '8px',
+          padding: '16px'
+        }}
+      >
+        <h3 style={{ margin: '0 0 12px 0', color: '#e65100' }}>💡 Zalecenia:</h3>
+        <ul style={{ margin: 0, paddingLeft: '20px', color: '#bf360c', fontSize: '13px' }}>
+          <li><strong>Profil publiczny:</strong> Pozwala innym inspirować się Twoim postępem</li>
+          <li><strong>Wyświetlaj statystyki:</strong> Motywuje i pokazuje Twoją zaangażowanie</li>
+          <li><strong>Zmień ustawienia w dowolnym momencie:</strong> Bez ograniczeń</li>
+          <li><strong>Email nigdy nie jest publiczny:</strong> Twój email widzi tylko Ty i administratorzy</li>
+        </ul>
       </div>
     </div>
   );

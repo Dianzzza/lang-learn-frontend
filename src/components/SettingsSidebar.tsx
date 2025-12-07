@@ -86,19 +86,6 @@ export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSide
           </button>
         ))}
       </nav>
-
-      {/* Footer info */}
-      <div className={styles.footer}>
-        <div className={styles.footerContent}>
-          <div className={styles.footerIcon}>💡</div>
-          <div className={styles.footerText}>
-            <div className={styles.footerTitle}>Wskazówka</div>
-            <div className={styles.footerDescription}>
-              Zmiany są zapisywane automatycznie
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

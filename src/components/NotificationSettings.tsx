@@ -1,148 +1,251 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from '../styles/SettingsForm.module.css';
+import { updateUserSettings } from '../lib/api';
 
-// TypeScript types
-interface NotificationSettings {
-  emailReminders: boolean;
-  pushReminders: boolean;
-  weeklyReports: boolean;
-  courseUpdates: boolean;
-  friendActivity: boolean;
-  achievements: boolean;
+interface UserSettings {
+  id: number;
+  userId: number;
+  dailyGoal: number;
+  difficulty: string;
+  notificationsEnabled: boolean;
+  emailNotifications: boolean;
+  profilePublic: boolean;
+  showStats: boolean;
 }
 
 interface NotificationSettingsProps {
-  settings: NotificationSettings;
-  onSave: (data: NotificationSettings) => Promise<void>;
-  isLoading: boolean;
+  userId: number;
+  settings: UserSettings | null;
+  onSuccess?: () => void;
 }
 
-export default function NotificationSettings({ settings, onSave, isLoading }: NotificationSettingsProps) {
-  const [formData, setFormData] = useState<NotificationSettings>(settings);
-  const [hasChanges, setHasChanges] = useState<boolean>(false);
+export default function NotificationSettings({ userId, settings, onSuccess }: NotificationSettingsProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleToggle = (field: keyof NotificationSettings): void => {
-    setFormData(prev => ({ ...prev, [field]: !prev[field] }));
-    setHasChanges(true);
-  };
+  // Formy
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    
+  // Załaduj ustawienia
+  useEffect(() => {
+    if (settings) {
+      setNotificationsEnabled(settings.notificationsEnabled ?? true);
+      setEmailNotifications(settings.emailNotifications ?? true);
+    }
+  }, [settings]);
+
+  const handleToggle = async (field: 'notifications' | 'email') => {
+    const newNotifications = field === 'notifications' ? !notificationsEnabled : notificationsEnabled;
+    const newEmail = field === 'email' ? !emailNotifications : emailNotifications;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
     try {
-      await onSave(formData);
-      setHasChanges(false);
-    } catch (error) {
-      console.error('Error saving notifications:', error);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Brak tokena autoryzacji');
+      }
+
+      await updateUserSettings(userId, token, {
+        notificationsEnabled: newNotifications,
+        emailNotifications: newEmail,
+      });
+
+      if (field === 'notifications') {
+        setNotificationsEnabled(newNotifications);
+      } else {
+        setEmailNotifications(newEmail);
+      }
+
+      setSuccess(true);
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Ukryj komunikat sukcesu po 3 sekundach
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Nieznany błąd';
+      setError(message);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const toggleOptions = [
-    {
-      key: 'emailReminders' as const,
-      title: 'Przypomnienia email',
-      description: 'Otrzymuj przypomnienia o nauce na email',
-      icon: '📧'
-    },
-    {
-      key: 'pushReminders' as const,
-      title: 'Przypomnienia push',
-      description: 'Powiadomienia push o zaplanowanej nauce',
-      icon: '📱'
-    },
-    {
-      key: 'weeklyReports' as const,
-      title: 'Tygodniowe raporty',
-      description: 'Podsumowanie tygodniowego postępu',
-      icon: '📊'
-    },
-    {
-      key: 'courseUpdates' as const,
-      title: 'Aktualizacje kursów',
-      description: 'Powiadomienia o nowych lekcjach i materiałach',
-      icon: '📚'
-    },
-    {
-      key: 'friendActivity' as const,
-      title: 'Aktywność znajomych',
-      description: 'Powiadomienia o postępach znajomych',
-      icon: '👥'
-    },
-    {
-      key: 'achievements' as const,
-      title: 'Osiągnięcia',
-      description: 'Powiadomienia o zdobytych odznakach i rekordach',
-      icon: '🏆'
-    }
-  ];
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>
-          <span className={styles.titleIcon}>🔔</span>
-          Powiadomienia
-        </h2>
-        <p className={styles.description}>
-          Wybierz, jakie powiadomienia chcesz otrzymywać
+        <h2>Powiadomienia</h2>
+        <p>Zarządzaj powiadomieniami i alertami</p>
+      </div>
+
+      {/* Informacyjny box */}
+      <div 
+        style={{
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px'
+        }}
+      >
+        <p style={{ margin: 0, color: '#0369a1' }}>
+          <strong>ℹ️ Informacja:</strong> Powiadomienia pomagają Ci być spójna i pamiętać o celach nauki.
+          Możesz je w każdej chwili włączyć lub wyłączyć.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className={styles.form}>
+      {/* Powiadomienia push */}
+      <div
+        style={{
+          backgroundColor: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <div>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
+            🔔 Powiadomienia na urządzeniu
+          </h3>
+          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+            Otrzymuj przypomnienia o nauce bezpośrednio na ekran
+          </p>
+        </div>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={notificationsEnabled}
+            onChange={() => handleToggle('notifications')}
+            disabled={loading}
+          />
+          <span className={styles.toggleSwitch} />
+        </label>
+      </div>
+
+      {/* Powiadomienia e-mail */}
+      <div
+        style={{
+          backgroundColor: '#fff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <div>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>
+            📧 Powiadomienia e-mail
+          </h3>
+          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+            Otrzymuj raporty tygodniowe i aktualizacje e-mailem
+          </p>
+        </div>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={emailNotifications}
+            onChange={() => handleToggle('email')}
+            disabled={loading}
+          />
+          <span className={styles.toggleSwitch} />
+        </label>
+      </div>
+
+      {/* Komunikaty */}
+      {error && (
+        <div className={styles.alert} style={{ backgroundColor: '#fee', color: '#c33', marginBottom: '16px' }}>
+          ❌ {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className={styles.alert} style={{ backgroundColor: '#efe', color: '#3c3', marginBottom: '16px' }}>
+          ✅ Ustawienia powiadomień zmienione!
+        </div>
+      )}
+
+      {/* Szczegóły powiadomień */}
+      <div
+        style={{
+          backgroundColor: '#f9f9f9',
+          border: '1px solid #e0e0e0',
+          borderRadius: '8px',
+          padding: '16px'
+        }}
+      >
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>
+          📋 Co otrzymasz:
+        </h3>
         
-        <div className={styles.toggleList}>
-          {toggleOptions.map((option) => (
-            <div key={option.key} className={styles.toggleItem}>
-              <div className={styles.toggleInfo}>
-                <div className={styles.toggleIcon}>{option.icon}</div>
-                <div className={styles.toggleText}>
-                  <div className={styles.toggleTitle}>{option.title}</div>
-                  <div className={styles.toggleDescription}>
-                    {option.description}
-                  </div>
-                </div>
-              </div>
-              
-              <label className={styles.toggleLabel}>
-                <input
-                  type="checkbox"
-                  checked={formData[option.key]}
-                  onChange={() => handleToggle(option.key)}
-                  className={styles.toggleInput}
-                />
-                <div className={styles.toggle}>
-                  <div className={styles.toggleSlider}></div>
-                </div>
-              </label>
-            </div>
-          ))}
-        </div>
+        {notificationsEnabled && (
+          <div style={{ marginBottom: '16px' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#0369a1' }}>
+              🔔 Powiadomienia na urządzeniu:
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#666' }}>
+              <li>Przypomnienie o codziennej nauce</li>
+              <li>Gratulacje za ukończenie lekcji</li>
+              <li>Osiągnięcia i odznaki</li>
+              <li>Powiadomienia o nowych kursach</li>
+            </ul>
+          </div>
+        )}
 
-        {/* Submit */}
-        <div className={styles.actions}>
-          <button
-            type="submit"
-            disabled={!hasChanges || isLoading}
-            className={`${styles.saveBtn} ${!hasChanges ? styles.disabled : ''}`}
-          >
-            {isLoading ? (
-              <>
-                <span className={styles.spinner}></span>
-                Zapisywanie...
-              </>
-            ) : (
-              <>
-                <span className={styles.saveIcon}>💾</span>
-                Zapisz ustawienia
-              </>
-            )}
-          </button>
-        </div>
+        {emailNotifications && (
+          <div>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#0369a1' }}>
+              📧 Powiadomienia e-mail:
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#666' }}>
+              <li>Cotygodniowy raport postępu</li>
+              <li>Podsumowanie nauki z ostatniego tygodnia</li>
+              <li>Artykuły i wskazówki do nauki</li>
+              <li>Oferty specjalne i aktualizacje</li>
+            </ul>
+          </div>
+        )}
 
-      </form>
+        {!notificationsEnabled && !emailNotifications && (
+          <p style={{ margin: 0, color: '#999', fontSize: '13px' }}>
+            ℹ️ Wszystkie powiadomienia są wyłączone. Nie będziesz otrzymywać żadnych alertów.
+          </p>
+        )}
+      </div>
+
+      {/* Zalecenia */}
+      <div 
+        style={{
+          backgroundColor: '#fff3e0',
+          border: '1px solid #ffe0b2',
+          borderRadius: '8px',
+          padding: '16px',
+          marginTop: '24px'
+        }}
+      >
+        <h3 style={{ margin: '0 0 12px 0', color: '#e65100' }}>💡 Zalecenia:</h3>
+        <ul style={{ margin: 0, paddingLeft: '20px', color: '#bf360c', fontSize: '13px' }}>
+          <li><strong>Włącz powiadomienia:</strong> Pomogą Ci być konsekwentnym w nauce</li>
+          <li><strong>Otrzymuj raporty e-mail:</strong> Dobrze zobaczyć swój postęp</li>
+          <li><strong>Ustaw czas:</strong> Powiadomienia będą wysyłane o najlepszym dla Ciebie времени</li>
+          <li><strong>Wyrażanie:</strong> Możesz zawsze zmienić ustawienia w każdej chwili</li>
+        </ul>
+      </div>
     </div>
   );
 }

@@ -63,7 +63,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     setIsLoading(true);
     try {
       // prawdziwe wywołanie backendu
-      await apiRequest('api/auth/request-password-reset', 'POST', { email });
+      await apiRequest('/auth/request-password-reset', 'POST', { email });
       setResetEmail(email);
       setMode('reset-sent');
     } catch (error: unknown) {

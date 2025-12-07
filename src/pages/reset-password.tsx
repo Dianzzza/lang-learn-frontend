@@ -1,3 +1,5 @@
+// src/pages/reset-password.tsx
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import styles from "../styles/resetPassword.module.css";

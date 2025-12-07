@@ -1,256 +1,316 @@
-// components/SecuritySettings.tsx
-// BEZPIECZEŃSTWO - zmiana hasła, email (bez 2FA)
-// UŻYWA WSPÓLNEGO SettingsForm.module.css
-
 'use client';
 
 import { useState } from 'react';
 import styles from '../styles/SettingsForm.module.css';
+import { changePassword } from '../lib/api';
 
-// TypeScript types
 interface User {
   id: number;
   username: string;
-  displayName: string;
   email: string;
-  avatar: string;
-  bio?: string;
-  joinedDate: string;
-}
-
-interface PasswordData {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
-
-interface EmailData {
-  newEmail: string;
-  password: string;
 }
 
 interface SecuritySettingsProps {
-  user: User;
-  onSave: (data: any) => Promise<void>;
-  isLoading: boolean;
+  user: User | null;
+  onSuccess?: () => void;
 }
 
-export default function SecuritySettings({ user, onSave, isLoading }: SecuritySettingsProps) {
-  const [passwordData, setPasswordData] = useState<PasswordData>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  
-  const [emailData, setEmailData] = useState<EmailData>({
-    newEmail: '',
-    password: ''
-  });
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+export default function SecuritySettings({ user, onSuccess }: SecuritySettingsProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const getPasswordStrength = (password: string): { strength: number; label: string; color: string } => {
-    if (password.length < 6) return { strength: 0, label: 'Bardzo słabe', color: 'var(--secondary-red)' };
-    
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
-    
-    switch (score) {
-      case 0:
-      case 1: return { strength: 20, label: 'Słabe', color: 'var(--secondary-red)' };
-      case 2: return { strength: 40, label: 'Przeciętne', color: 'var(--secondary-amber)' };
-      case 3: return { strength: 60, label: 'Dobre', color: 'var(--secondary-amber)' };
-      case 4: return { strength: 80, label: 'Silne', color: 'var(--secondary-green)' };
-      case 5: return { strength: 100, label: 'Bardzo silne', color: 'var(--secondary-green)' };
-      default: return { strength: 0, label: 'Bardzo słabe', color: 'var(--secondary-red)' };
-    }
+  // Formy
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Walidacja
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+  const [showPasswords, setShowPasswords] = useState(false);
+
+  // Oblicz siłę hasła
+  const calculatePasswordStrength = (pwd: string) => {
+    if (pwd.length < 6) return 'weak';
+    if (pwd.length < 10) return 'medium';
+    if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[!@#$%^&*]/.test(pwd)) return 'strong';
+    return 'medium';
   };
 
-  const validatePasswordForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!passwordData.currentPassword) {
-      newErrors.currentPassword = 'Aktualne hasło jest wymagane';
-    }
-    
-    if (!passwordData.newPassword) {
-      newErrors.newPassword = 'Nowe hasło jest wymagane';
-    } else if (passwordData.newPassword.length < 8) {
-      newErrors.newPassword = 'Hasło musi mieć przynajmniej 8 znaków';
-    }
-    
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      newErrors.confirmPassword = 'Hasła muszą być identyczne';
-    }
-    
-    if (passwordData.currentPassword === passwordData.newPassword) {
-      newErrors.newPassword = 'Nowe hasło musi różnić się od aktualnego';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const pwd = e.target.value;
+    setNewPassword(pwd);
+    setPasswordStrength(calculatePasswordStrength(pwd));
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validatePasswordForm()) return;
-    
+    setError(null);
+    setSuccess(false);
+
+    // Walidacja
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Wszystkie pola są wymagane');
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setError('Nowe hasło nie może być takie samo jak stare');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Nowe hasło musi mieć co najmniej 6 znaków');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Hasła nie są identyczne');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      await onSave({
-        action: 'changePassword',
-        ...passwordData
-      });
-      
-      // Clear form on success
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-    } catch (error) {
-      setErrors({ submit: 'Błąd podczas zmiany hasła' });
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Brak tokena autoryzacji');
+      }
+
+      await changePassword(token, currentPassword, newPassword);
+
+      setSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordStrength('weak');
+
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Ukryj komunikat sukcesu po 3 sekundach
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Nieznany błąd';
+      setError(message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const togglePasswordVisibility = (field: string): void => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
+  const getPasswordStrengthColor = () => {
+    switch (passwordStrength) {
+      case 'weak':
+        return '#ff6b6b';
+      case 'medium':
+        return '#ffd93d';
+      case 'strong':
+        return '#51cf66';
+      default:
+        return '#ddd';
+    }
   };
 
-  const passwordStrength = getPasswordStrength(passwordData.newPassword);
+  const getPasswordStrengthLabel = () => {
+    switch (passwordStrength) {
+      case 'weak':
+        return 'Słabe';
+      case 'medium':
+        return 'Średnie';
+      case 'strong':
+        return 'Silne';
+      default:
+        return '';
+    }
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>
-          <span className={styles.titleIcon}>🔒</span>
-          Bezpieczeństwo
-        </h2>
-        <p className={styles.description}>
-          Zarządzaj dostępem do swojego konta
+        <h2>Bezpieczeństwo</h2>
+        <p>Zmień hasło i zarządzaj bezpieczeństwem konta</p>
+      </div>
+
+      {/* Informacja o koncie */}
+      <div 
+        className={styles.infoBox}
+        style={{
+          backgroundColor: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px'
+        }}
+      >
+        <p style={{ margin: 0, color: '#0369a1' }}>
+          <strong>ℹ️ Informacja:</strong> Zmiana hasła wyloguje Cię ze wszystkich innych urządzeń.
+          Będziesz musiał się ponownie zalogować.
         </p>
       </div>
 
-      <div className={styles.sectionsContainer}>
+      {/* Formularz zmiany hasła */}
+      <form onSubmit={handleSubmit} className={styles.form}>
         
-        {/* Zmiana hasła */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <span className={styles.sectionIcon}>🔑</span>
-              Zmiana hasła
-            </h3>
-            <p className={styles.sectionDescription}>
-              Ustaw nowe, bezpieczne hasło do swojego konta
-            </p>
+        {/* Bieżące hasło */}
+        <div className={styles.formGroup}>
+          <label htmlFor="currentPassword" className={styles.label}>
+            Bieżące hasło
+          </label>
+          <div className={styles.passwordInputWrapper}>
+            <input
+              id="currentPassword"
+              type={showPasswords ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Wpisz swoje bieżące hasło"
+              className={styles.input}
+              autoComplete="current-password"
+            />
           </div>
-
-          <form onSubmit={handlePasswordSubmit} className={styles.form}>
-            
-            {/* Current Password */}
-            <div className={styles.formGroup}>
-              <label htmlFor="currentPassword" className={styles.label}>
-                <span className={styles.labelText}>Aktualne hasło</span>
-                <span className={styles.required}>*</span>
-              </label>
-              <div className={styles.passwordWrapper}>
-                <input
-                  type={showPasswords.current ? 'text' : 'password'}
-                  id="currentPassword"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                  className={`${styles.input} ${errors.currentPassword ? styles.error : ''}`}
-                  placeholder="Wpisz aktualne hasło"
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePasswordVisibility('current')}
-                  className={styles.passwordToggle}
-                >
-                  {showPasswords.current ? '👁️' : '👁️‍🗨️'}
-                </button>
-              </div>
-              {errors.currentPassword && (
-                <div className={styles.errorMessage}>{errors.currentPassword}</div>
-              )}
-            </div>
-
-            {/* New Password */}
-            <div className={styles.formGroup}>
-              <label htmlFor="newPassword" className={styles.label}>
-                <span className={styles.labelText}>Nowe hasło</span>
-                <span className={styles.required}>*</span>
-              </label>
-              <div className={styles.passwordWrapper}>
-                <input
-                  type={showPasswords.new ? 'text' : 'password'}
-                  id="newPassword"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                  className={`${styles.input} ${errors.newPassword ? styles.error : ''}`}
-                  placeholder="Wpisz nowe hasło"
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePasswordVisibility('new')}
-                  className={styles.passwordToggle}
-                >
-                  {showPasswords.new ? '👁️' : '👁️‍🗨️'}
-                </button>
-              </div>
-              {errors.newPassword && (
-                <div className={styles.errorMessage}>{errors.newPassword}</div>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div className={styles.formGroup}>
-              <label htmlFor="confirmPassword" className={styles.label}>
-                <span className={styles.labelText}>Potwierdź hasło</span>
-                <span className={styles.required}>*</span>
-              </label>
-              <div className={styles.passwordWrapper}>
-                <input
-                  type={showPasswords.confirm ? 'text' : 'password'}
-                  id="confirmPassword"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  className={`${styles.input} ${errors.confirmPassword ? styles.error : ''}`}
-                  placeholder="Powtórz nowe hasło"
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePasswordVisibility('confirm')}
-                  className={styles.passwordToggle}
-                >
-                  {showPasswords.confirm ? '👁️' : '👁️‍🗨️'}
-                </button>
-              </div>
-              {errors.confirmPassword && (
-                <div className={styles.errorMessage}>{errors.confirmPassword}</div>
-              )}
-            </div>
-
-            <div className={styles.actions}>
-              <button
-                type="submit"
-                disabled={isLoading || !passwordData.currentPassword || !passwordData.newPassword}
-                className={styles.submitBtn}
-              >
-                {isLoading ? 'Zmienianie...' : 'Zmień hasło'}
-              </button>
-            </div>
-          </form>
         </div>
 
+        {/* Nowe hasło */}
+        <div className={styles.formGroup}>
+          <label htmlFor="newPassword" className={styles.label}>
+            Nowe hasło
+          </label>
+          <div className={styles.passwordInputWrapper}>
+            <input
+              id="newPassword"
+              type={showPasswords ? 'text' : 'password'}
+              value={newPassword}
+              onChange={handlePasswordChange}
+              placeholder="Wpisz nowe hasło"
+              className={styles.input}
+              autoComplete="new-password"
+            />
+          </div>
+
+          {/* Siła hasła */}
+          {newPassword && (
+            <div style={{ marginTop: '8px' }}>
+              <div
+                style={{
+                  height: '6px',
+                  backgroundColor: '#e0e0e0',
+                  borderRadius: '3px',
+                  overflow: 'hidden',
+                  marginBottom: '6px'
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: passwordStrength === 'weak' ? '33%' : passwordStrength === 'medium' ? '66%' : '100%',
+                    backgroundColor: getPasswordStrengthColor(),
+                    transition: 'width 0.3s ease'
+                  }}
+                />
+              </div>
+              <small style={{ color: getPasswordStrengthColor() }}>
+                Siła hasła: <strong>{getPasswordStrengthLabel()}</strong>
+              </small>
+            </div>
+          )}
+
+          <small className={styles.hint}>
+            Minimum 6 znaków. Dla silnego hasła: mieszaj duże litery, cyfry i znaki specjalne.
+          </small>
+        </div>
+
+        {/* Potwierdzenie hasła */}
+        <div className={styles.formGroup}>
+          <label htmlFor="confirmPassword" className={styles.label}>
+            Potwierdzenie hasła
+          </label>
+          <div className={styles.passwordInputWrapper}>
+            <input
+              id="confirmPassword"
+              type={showPasswords ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Powtórz nowe hasło"
+              className={styles.input}
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
+
+        {/* Pokaż hasła */}
+        <div className={styles.checkboxGroup}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={showPasswords}
+              onChange={(e) => setShowPasswords(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>Pokaż hasła</span>
+          </label>
+        </div>
+
+        {/* Walidacja - potwierdzenie pasuje */}
+        {newPassword && confirmPassword && (
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              backgroundColor: newPassword === confirmPassword ? '#efe' : '#fee',
+              border: `1px solid ${newPassword === confirmPassword ? '#3c3' : '#fcc'}`,
+              color: newPassword === confirmPassword ? '#3c3' : '#c33',
+              fontSize: '14px'
+            }}
+          >
+            {newPassword === confirmPassword ? '✅ Hasła są identyczne' : '❌ Hasła się różnią'}
+          </div>
+        )}
+
+        {/* Komunikaty */}
+        {error && (
+          <div className={styles.alert} style={{ backgroundColor: '#fee', color: '#c33' }}>
+            ❌ {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className={styles.alert} style={{ backgroundColor: '#efe', color: '#3c3' }}>
+            ✅ Hasło zmienione pomyślnie!
+          </div>
+        )}
+
+        {/* Przycisk Submit */}
+        <div className={styles.buttonGroup}>
+          <button
+            type="submit"
+            disabled={loading || !newPassword || newPassword !== confirmPassword}
+            className={styles.submitBtn}
+          >
+            {loading ? '⏳ Zmiana hasła...' : '🔒 Zmień hasło'}
+          </button>
+        </div>
+      </form>
+
+      {/* Wskazówki bezpieczeństwa */}
+      <div 
+        className={styles.tipsBox}
+        style={{
+          backgroundColor: '#fff9e6',
+          border: '1px solid #ffe680',
+          borderRadius: '8px',
+          padding: '16px',
+          marginTop: '24px'
+        }}
+      >
+        <h3 style={{ margin: '0 0 12px 0', color: '#b8860b' }}>🛡️ Wskazówki bezpieczeństwa:</h3>
+        <ul style={{ margin: 0, paddingLeft: '20px', color: '#8b6914' }}>
+          <li>Nigdy nie udostępniaj swojego hasła nikomu</li>
+          <li>Używaj unikalnego hasła dla każdego konta</li>
+          <li>Zmień hasło co najmniej raz na 3 miesiące</li>
+          <li>Nie używaj informacji osobistych w haśle</li>
+          <li>Użyj kombinacji liter, liczb i znaków specjalnych</li>
+        </ul>
       </div>
     </div>
   );
