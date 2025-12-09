@@ -185,5 +185,19 @@ export async function updateUserSettings(
   return apiRequest('/auth/users/' + userId + '/settings', 'PUT', data, token);
 }
 
+// Helper do dodawania fiszek
+export async function createFlashcard(
+  token: string,
+  data: {
+    front: string;
+    back: string;
+    categoryId: number | null;
+    isGlobal?: boolean;
+  }
+) {
+  return apiRequest('/flashcards', 'POST', data, token);
+}
+
+
 
 export type { User, UserStats, Course, Activity, ApiResponse, RawActivity };
