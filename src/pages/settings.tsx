@@ -1,5 +1,7 @@
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import SettingsSidebar from '../components/SettingsSidebar';
 import AccountSettings from '../components/AccountSettings';
@@ -8,103 +10,82 @@ import LearningSettings from '../components/LearningSettings';
 import NotificationSettings from '../components/NotificationSettings';
 import PrivacySettings from '../components/PrivacySettings';
 import styles from '../styles/Settings.module.css';
+import { useProfile } from '../hooks/useProfile';
+import { getUserSettings } from '../lib/api';
 
 // TypeScript types
 type SettingsTab = 'account' | 'security' | 'learning' | 'notifications' | 'privacy';
 
-interface User {
+interface UserSettings {
   id: number;
-  username: string;
-  displayName: string;
-  email: string;
-  avatar: string;
-  bio?: string;
-  joinedDate: string;
-}
-
-interface LearningPreferences {
+  userId: number;
   dailyGoal: number;
-  weeklyGoal: number;
-  difficultyLevel: 'easy' | 'medium' | 'hard';
-  reminderTime: string;
-  enableReminders: boolean;
-  enableWeeklyReports: boolean;
-}
-
-interface NotificationSettings {
-  emailReminders: boolean;
-  pushReminders: boolean;
-  weeklyReports: boolean;
-  courseUpdates: boolean;
-  friendActivity: boolean;
-  achievements: boolean;
-}
-
-interface PrivacySettings {
-  profileVisibility: 'public' | 'friends' | 'private';
-  showProgress: boolean;
-  showActivity: boolean;
-  allowFriendRequests: boolean;
-  emailNewsletters: boolean;
+  difficulty: string;
+  notificationsEnabled: boolean;
+  emailNotifications: boolean;
+  profilePublic: boolean;
+  showStats: boolean;
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>('');
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
-  // Przykładowe dane użytkownika
-  const [user, setUser] = useState<User>({
-    id: 1,
-    username: 'anna_learns',
-    displayName: 'Anna Kowalska',
-    email: 'anna@example.com',
-    avatar: '👩‍🎓',
-    bio: 'Uczę się angielskiego od 6 miesięcy. Cel: poziom B2 do końca roku!',
-    joinedDate: '2025-05-15'
-  });
+  // Pobierz dane profilu z bazy
+  const { user, loading, error } = useProfile();
 
-  const [learningPrefs, setLearningPrefs] = useState<LearningPreferences>({
-    dailyGoal: 5,
-    weeklyGoal: 30,
-    difficultyLevel: 'medium',
-    reminderTime: '19:00',
-    enableReminders: true,
-    enableWeeklyReports: true
-  });
+  // Pobierz ustawienia użytkownika
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!user) return;
 
-  const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailReminders: true,
-    pushReminders: true,
-    weeklyReports: true,
-    courseUpdates: true,
-    friendActivity: false,
-    achievements: true
-  });
+      try {
+        setSettingsLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) return;
 
-  const [privacy, setPrivacy] = useState<PrivacySettings>({
-    profileVisibility: 'public',
-    showProgress: true,
-    showActivity: true,
-    allowFriendRequests: true,
-    emailNewsletters: false
-  });
+        const settings = await getUserSettings(user.id, token);
+        setUserSettings(settings);
+      } catch (err) {
+        console.warn('Failed to load settings:', err);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
 
-  const handleSave = async (data: any, section: string): Promise<void> => {
-    setIsLoading(true);
-    setSaveMessage('');
-    
-    try {
-      // Tutaj byłoby API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSaveMessage(`✅ ${section} zostało zapisane!`);
-      setTimeout(() => setSaveMessage(''), 3000);
-    } catch (error) {
-      setSaveMessage(`❌ Błąd podczas zapisywania ${section}`);
-    } finally {
-      setIsLoading(false);
+    fetchSettings();
+  }, [user]);
+
+  // Redirect jeśli brak autoryzacji
+  useEffect(() => {
+    if (!loading && (error || !user)) {
+      router.push('/auth/login');
     }
+  }, [loading, user, error, router]);
+
+  // Stan ładowania
+  if (loading) {
+    return (
+      <Layout>
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+          <p>Ładowanie ustawień...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Zabezpieczenie przed renderowaniem bez usera
+  if (error || !user) {
+    return null;
+  }
+
+  const handleSaveSuccess = () => {
+    setSaveMessage('✅ Zmiany zapisane pomyślnie!');
+    setTimeout(() => setSaveMessage(''), 3000);
   };
 
   const renderContent = () => {
@@ -112,43 +93,39 @@ export default function SettingsPage() {
       case 'account':
         return (
           <AccountSettings 
-            user={user} 
-            onSave={(data) => handleSave(data, 'konta')}
-            isLoading={isLoading}
+            user={user}
+            onSuccess={handleSaveSuccess}
           />
         );
       case 'security':
         return (
           <SecuritySettings 
             user={user}
-            onSave={(data) => handleSave(data, 'bezpieczeństwa')}
-            isLoading={isLoading}
+            onSuccess={handleSaveSuccess}
           />
         );
       case 'learning':
         return (
           <LearningSettings 
-            preferences={learningPrefs}
-            onSave={(data) => handleSave(data, 'preferencji nauki')}
-            isLoading={isLoading}
+            userId={user.id}
+            settings={userSettings}
+            onSuccess={handleSaveSuccess}
           />
         );
       case 'notifications':
         return (
           <NotificationSettings 
-            settings={notifications}
-            onSave={(data) => handleSave(data, 'powiadomień')}
-            isLoading={isLoading}
+            userId={user.id}
+            settings={userSettings}
+            onSuccess={handleSaveSuccess}
           />
         );
       case 'privacy':
         return (
           <PrivacySettings 
-            settings={privacy}
-            onSave={(data) => handleSave(data, 'prywatności')}
-            isLoading={isLoading}
-            onExportData={() => console.log('Export data')}
-            onDeleteAccount={() => console.log('Delete account')}
+            userId={user.id}
+            settings={userSettings}
+            onSuccess={handleSaveSuccess}
           />
         );
       default:
@@ -192,7 +169,14 @@ export default function SettingsPage() {
 
             {/* Content - active settings section */}
             <div className={styles.content}>
-              {renderContent()}
+              {settingsLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '10px' }}>⏳</div>
+                  <p>Ładowanie ustawień...</p>
+                </div>
+              ) : (
+                renderContent()
+              )}
             </div>
 
           </div>

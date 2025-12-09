@@ -1,3 +1,5 @@
+// src/pages/_app.tsx
+
 import type { AppProps } from 'next/app';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import LandingPage from '../components/LandingPage';

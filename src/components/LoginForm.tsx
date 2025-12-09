@@ -81,7 +81,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> 
 
     setIsLoading(true);
     try {
-      const response = await apiRequest<{ token: string; user: UserData }>('api/auth/login', 'POST', {
+      const response = await apiRequest<{ token: string; user: UserData }>('/auth/login', 'POST', {
         email: formData.email,
         password: formData.password,
       });

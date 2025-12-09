@@ -68,7 +68,7 @@ export default function ProfileHeader({ user }: ProfileHeaderProps) {
               {user.displayName}
             </h1>
             <p className={styles.username}>
-              @{user.username}
+              {user.email}
             </p>
             
             {user.bio && (

@@ -1,3 +1,5 @@
+// src/pages/index.tsx
+
 import { useState } from 'react';
 import Layout from '../components/Layout';
 import LessonsList from '../components/LessonsList';

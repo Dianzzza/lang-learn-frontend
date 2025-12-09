@@ -1,3 +1,5 @@
+// src/pages/ranking.tsx
+
 import Layout from '../components/Layout';
 import styles from '../styles/RankingPage.module.css';
 import { useState } from 'react';

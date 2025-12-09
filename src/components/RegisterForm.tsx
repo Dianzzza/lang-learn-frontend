@@ -95,7 +95,7 @@ export default function RegisterForm({ onSuccess, isLoading, setIsLoading }: Reg
       
       setIsLoading(true);
       try {
-        const response = await apiRequest<{ message: string; userId: number }>('api/auth/register', 'POST', {
+        const response = await apiRequest<{ message: string; userId: number }>('/auth/register', 'POST', {
           username: formData.username,
           email: formData.email,
           password: formData.password,
