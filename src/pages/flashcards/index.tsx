@@ -48,7 +48,7 @@ export default function FlashcardsBrowser() {
       try {
         const data = await apiRequest<Category[]>('/categories', 'GET');
         setCategories(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (e: any) {
         setError(e.message ?? 'Błąd ładowania kategorii');
       } finally {
@@ -116,7 +116,9 @@ export default function FlashcardsBrowser() {
     }
   });
 
-  const getDifficultyColor = (difficulty: FlashcardDeck['difficulty']): string => {
+  const getDifficultyColor = (
+    difficulty: FlashcardDeck['difficulty']
+  ): string => {
     switch (difficulty) {
       case 'Łatwe':
         return 'var(--secondary-green)';
@@ -136,13 +138,42 @@ export default function FlashcardsBrowser() {
     return count.toString();
   };
 
+  const handleResetDeck = async (categoryId: number) => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('token')
+        : null;
+    if (!token) {
+      alert('Musisz być zalogowany.');
+      return;
+    }
+    if (!confirm('Na pewno zresetować ten zestaw?')) return;
+
+    try {
+      await apiRequest(
+        '/flashcards/reset',
+        'POST',
+        { categoryId },
+        token
+      );
+      alert(
+        'Zestaw został zresetowany. Wszystkie fiszki będą traktowane jako nowe.'
+      );
+    } catch (e: any) {
+      console.error('Błąd resetowania zestawu:', e);
+      alert(e?.message ?? 'Nie udało się zresetować zestawu.');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
         <div className={styles.page}>
           <div className={styles.container}>
             <div className={styles.resultsHeader}>
-              <div className={styles.resultsInfo}>Ładowanie kategorii...</div>
+              <div className={styles.resultsInfo}>
+                Ładowanie kategorii...
+              </div>
             </div>
           </div>
         </div>
@@ -176,7 +207,8 @@ export default function FlashcardsBrowser() {
                 Fiszki
               </h1>
               <p className={styles.pageDescription}>
-                Wybierz kategorię fiszek do nauki lub utwórz własny zestaw
+                Wybierz kategorię fiszek do nauki lub utwórz własny
+                zestaw
               </p>
             </div>
             <div className={styles.headerActions}>
@@ -220,7 +252,9 @@ export default function FlashcardsBrowser() {
                 <label className={styles.filterLabel}>Poziom:</label>
                 <select
                   value={selectedDifficulty}
-                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  onChange={(e) =>
+                    setSelectedDifficulty(e.target.value)
+                  }
                   className={styles.filterSelect}
                 >
                   {difficulties.map((diff) => (
@@ -241,7 +275,9 @@ export default function FlashcardsBrowser() {
                   <option value="popular">Popularne</option>
                   <option value="newest">Najnowsze</option>
                   <option value="progress">Postęp</option>
-                  <option value="alphabetical">Alfabetycznie</option>
+                  <option value="alphabetical">
+                    Alfabetycznie
+                  </option>
                 </select>
               </div>
             </div>
@@ -250,10 +286,13 @@ export default function FlashcardsBrowser() {
           {/* 📊 RESULTS STATS */}
           <div className={styles.resultsHeader}>
             <div className={styles.resultsInfo}>
-              Znaleziono <strong>{sortedDecks.length}</strong> kategorii
+              Znaleziono <strong>{sortedDecks.length}</strong>{' '}
+              kategorii
             </div>
             <div className={styles.viewToggle}>
-              <button className={`${styles.viewBtn} ${styles.active}`}>
+              <button
+                className={`${styles.viewBtn} ${styles.active}`}
+              >
                 <span>📋</span>
               </button>
               <button className={styles.viewBtn}>
@@ -275,11 +314,15 @@ export default function FlashcardsBrowser() {
                   <div className={styles.deckIcon}>{deck.emoji}</div>
                   <div className={styles.deckMeta}>
                     <div className={styles.deckCreator}>
-                      {deck.isCreatedByUser ? '👤 Twój zestaw' : `👥 ${deck.creator}`}
+                      {deck.isCreatedByUser
+                        ? '👤 Twój zestaw'
+                        : `👥 ${deck.creator}`}
                     </div>
                     <div
                       className={styles.deckDifficulty}
-                      style={{ color: getDifficultyColor(deck.difficulty) }}
+                      style={{
+                        color: getDifficultyColor(deck.difficulty),
+                      }}
                     >
                       {deck.difficulty}
                     </div>
@@ -289,13 +332,17 @@ export default function FlashcardsBrowser() {
                 {/* 📝 DECK CONTENT */}
                 <div className={styles.deckContent}>
                   <h3 className={styles.deckTitle}>{deck.title}</h3>
-                  <p className={styles.deckDescription}>{deck.description}</p>
+                  <p className={styles.deckDescription}>
+                    {deck.description}
+                  </p>
 
                   {/* 📊 DECK STATS */}
                   <div className={styles.deckStats}>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>🃏</span>
-                      <span className={styles.statText}>{deck.cardCount} kart</span>
+                      <span className={styles.statText}>
+                        {deck.cardCount} kart
+                      </span>
                     </div>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>👥</span>
@@ -305,7 +352,9 @@ export default function FlashcardsBrowser() {
                     </div>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>⏱️</span>
-                      <span className={styles.statText}>{deck.estimatedTime}</span>
+                      <span className={styles.statText}>
+                        {deck.estimatedTime}
+                      </span>
                     </div>
                   </div>
 
@@ -323,8 +372,12 @@ export default function FlashcardsBrowser() {
                 {deck.progress > 0 && (
                   <div className={styles.progressSection}>
                     <div className={styles.progressHeader}>
-                      <span className={styles.progressLabel}>Postęp:</span>
-                      <span className={styles.progressPercent}>{deck.progress}%</span>
+                      <span className={styles.progressLabel}>
+                        Postęp:
+                      </span>
+                      <span className={styles.progressPercent}>
+                        {deck.progress}%
+                      </span>
                     </div>
                     <div className={styles.progressBar}>
                       <div
@@ -335,19 +388,27 @@ export default function FlashcardsBrowser() {
 
                     <div className={styles.cardBreakdown}>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.mastered}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.mastered}`}
+                        ></div>
                         <span>{deck.masteredCards}</span>
                       </div>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.reviewing}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.reviewing}`}
+                        ></div>
                         <span>{deck.reviewingCards}</span>
                       </div>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.learning}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.learning}`}
+                        ></div>
                         <span>{deck.learningCards}</span>
                       </div>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.new}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.new}`}
+                        ></div>
                         <span>{deck.newCards}</span>
                       </div>
                     </div>
@@ -364,23 +425,21 @@ export default function FlashcardsBrowser() {
                     {deck.progress > 0 ? 'Kontynuuj' : 'Rozpocznij'}
                   </Link>
 
-                  <Link
+                  {/* <Link
                     href={`/flashcards/${deck.id}/preview`}
-                    className={`${styles.actionBtn} ${styles.preview}`}
+                    className={`${styles.actionBtn} ${styles.preview}`}                 Potrzebujemy tej funkcji?
                   >
                     <span className={styles.actionIcon}>👁️</span>
                     Podgląd
-                  </Link>
+                  </Link> */}
 
-                  {deck.isCreatedByUser && (
-                    <Link
-                      href={`/flashcards/${deck.id}/edit`}
-                      className={`${styles.actionBtn} ${styles.edit}`}
-                    >
-                      <span className={styles.actionIcon}>✏️</span>
-                      Edytuj
-                    </Link>
-                  )}
+                  <button
+                    className={`${styles.actionBtn} ${styles.edit}`}
+                    onClick={() => handleResetDeck(deck.id)}
+                  >
+                    <span className={styles.actionIcon}>♻️</span>
+                    Resetuj
+                  </button>
                 </div>
 
                 {deck.lastStudied && (
@@ -417,8 +476,12 @@ export default function FlashcardsBrowser() {
           {/* 📊 BOTTOM STATS */}
           <div className={styles.bottomStats}>
             <div className={styles.statBox}>
-              <div className={styles.statValue}>{decks.length}</div>
-              <div className={styles.statLabel}>Kategorie fiszek</div>
+              <div className={styles.statValue}>
+                {decks.length}
+              </div>
+              <div className={styles.statLabel}>
+                Kategorie fiszek
+              </div>
             </div>
             <div className={styles.statBox}>
               <div className={styles.statValue}>
@@ -430,7 +493,9 @@ export default function FlashcardsBrowser() {
               <div className={styles.statValue}>
                 {decks.filter((d) => d.progress > 0).length}
               </div>
-              <div className={styles.statLabel}>W trakcie nauki</div>
+              <div className={styles.statLabel}>
+                W trakcie nauki
+              </div>
             </div>
           </div>
         </div>
