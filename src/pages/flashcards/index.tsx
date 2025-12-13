@@ -11,6 +11,11 @@ interface Category {
   name: string;
 }
 
+interface DeckStats {
+  totalCards: number;
+  uniqueUsers: number;
+}
+
 interface FlashcardDeck {
   id: number;
   title: string;
@@ -39,6 +44,7 @@ export default function FlashcardsBrowser() {
   const [sortBy, setSortBy] = useState('popular');
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [deckStats, setDeckStats] = useState<Record<number, DeckStats>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,27 +65,70 @@ export default function FlashcardsBrowser() {
     loadCategories();
   }, []);
 
-  // Zamieniamy kategorie na „decki” (na razie statystyki są mockowane)
-  const decks: FlashcardDeck[] = categories.map((cat) => ({
-    id: cat.id,
-    title: cat.name,
-    description: `Fiszki z kategorii: ${cat.name}`,
-    cardCount: 0,
-    studyCount: 0,
-    lastStudied: null,
-    difficulty: 'Łatwe',
-    category: cat.name,
-    isCreatedByUser: false,
-    creator: 'System',
-    emoji: '📚',
-    estimatedTime: '5-10 min',
-    tags: [cat.name.toLowerCase()],
-    progress: 0,
-    masteredCards: 0,
-    reviewingCards: 0,
-    learningCards: 0,
-    newCards: 0,
-  }));
+  // 🔄 Wczytaj statystyki kart i użytkowników dla każdej kategorii
+  useEffect(() => {
+    const loadStats = async () => {
+      if (categories.length === 0) return;
+
+      try {
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('token')
+            : null;
+
+        const statsEntries: [number, DeckStats][] = [];
+
+        for (const cat of categories) {
+          try {
+            const stats = await apiRequest<DeckStats>(
+              `/flashcards/stats?categoryId=${cat.id}`,
+              'GET',
+              undefined,
+              token || undefined
+            );
+            statsEntries.push([cat.id, stats]);
+          } catch {
+            // jeśli dla danej kategorii się nie uda, pomijamy ją
+          }
+        }
+
+        const statsMap: Record<number, DeckStats> = {};
+        for (const [id, stats] of statsEntries) {
+          statsMap[id] = stats;
+        }
+        setDeckStats(statsMap);
+      } catch (e) {
+        console.error('Błąd ładowania statystyk fiszek:', e);
+      }
+    };
+
+    loadStats();
+  }, [categories]);
+
+  // Zamieniamy kategorie na „decki”
+  const decks: FlashcardDeck[] = categories.map((cat) => {
+    const stats = deckStats[cat.id];
+    return {
+      id: cat.id,
+      title: cat.name,
+      description: `Fiszki z kategorii: ${cat.name}`,
+      cardCount: stats ? stats.totalCards : 0,
+      studyCount: stats ? stats.uniqueUsers : 0,
+      lastStudied: null,
+      difficulty: 'Łatwe',
+      category: cat.name,
+      isCreatedByUser: false,
+      creator: 'System',
+      emoji: '📚',
+      estimatedTime: '5-10 min', // zostawiamy stały opis czasu
+      tags: [cat.name.toLowerCase()],
+      progress: 0,
+      masteredCards: 0,
+      reviewingCards: 0,
+      learningCards: 0,
+      newCards: 0,
+    };
+  });
 
   const categoryFilterOptions = ['all', ...categories.map((c) => c.name)];
   const difficulties = ['all', 'Łatwe', 'Średnie', 'Trudne'];
@@ -95,7 +144,8 @@ export default function FlashcardsBrowser() {
     const matchesCategory =
       selectedCategory === 'all' || deck.category === selectedCategory;
     const matchesDifficulty =
-      selectedDifficulty === 'all' || deck.difficulty === selectedDifficulty;
+      selectedDifficulty === 'all' ||
+      deck.difficulty === selectedDifficulty;
 
     return matchesSearch && matchesCategory && matchesDifficulty;
   });
@@ -212,7 +262,10 @@ export default function FlashcardsBrowser() {
               </p>
             </div>
             <div className={styles.headerActions}>
-              <Link href="/flashcards/create" className={styles.createBtn}>
+              <Link
+                href="/flashcards/create"
+                className={styles.createBtn}
+              >
                 <span className={styles.createIcon}>➕</span>
                 Moje fiszki
               </Link>
@@ -234,10 +287,14 @@ export default function FlashcardsBrowser() {
 
             <div className={styles.filters}>
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Kategoria:</label>
+                <label className={styles.filterLabel}>
+                  Kategoria:
+                </label>
                 <select
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) =>
+                    setSelectedCategory(e.target.value)
+                  }
                   className={styles.filterSelect}
                 >
                   {categoryFilterOptions.map((cat) => (
@@ -425,13 +482,7 @@ export default function FlashcardsBrowser() {
                     {deck.progress > 0 ? 'Kontynuuj' : 'Rozpocznij'}
                   </Link>
 
-                  {/* <Link
-                    href={`/flashcards/${deck.id}/preview`}
-                    className={`${styles.actionBtn} ${styles.preview}`}                 Potrzebujemy tej funkcji?
-                  >
-                    <span className={styles.actionIcon}>👁️</span>
-                    Podgląd
-                  </Link> */}
+                  {/* Podgląd na razie wyłączony */}
 
                   <button
                     className={`${styles.actionBtn} ${styles.edit}`}

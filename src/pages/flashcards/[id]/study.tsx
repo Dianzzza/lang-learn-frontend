@@ -57,10 +57,13 @@ interface Category {
   name: string;
 }
 
+// na razie na sztywno – ile kart na jedną lekcję
+const LESSON_CARD_LIMIT = 5;
+
 export default function FlashcardStudy() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const deckId = parseInt(params.id, 10);
+  const params = useParams<{ id: string } | null>();
+  const deckId = params?.id ? parseInt(params.id, 10) : NaN;
 
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [currentCard, setCurrentCard] = useState<StudyCard | null>(
@@ -109,6 +112,8 @@ export default function FlashcardStudy() {
 
   // 🔤 nazwa kategorii jako tytuł
   useEffect(() => {
+    if (Number.isNaN(deckId)) return;
+
     const loadCategory = async () => {
       try {
         const categories = await apiRequest<Category[]>(
@@ -131,6 +136,12 @@ export default function FlashcardStudy() {
 
   // 🚀 Pobierz fiszki z backendu dla danej kategorii (deckId = categoryId)
   useEffect(() => {
+    if (Number.isNaN(deckId)) {
+      setIsLoading(false);
+      setStudyMode('complete');
+      return;
+    }
+
     const loadFlashcards = async () => {
       setIsLoading(true);
       try {
@@ -185,12 +196,15 @@ export default function FlashcardStudy() {
         if (cardsToUse.length > 0) {
           setCurrentCard(cardsToUse[0]);
           setResponseStartTime(new Date());
+          setStudyMode('study');
         } else {
           setCurrentCard(null);
+          setStudyMode('complete');
         }
       } catch (e) {
         console.error('Błąd ładowania fiszek:', e);
         setCurrentCard(null);
+        setStudyMode('complete');
       } finally {
         setIsLoading(false);
       }
@@ -245,7 +259,6 @@ export default function FlashcardStudy() {
 
       setStats((prev) => ({
         ...prev,
-        // prosty licznik – możesz zmienić według potrzeb
         correctAnswers:
           status === 'learned'
             ? prev.correctAnswers + 1
@@ -273,12 +286,20 @@ export default function FlashcardStudy() {
         });
       }
 
+      const nextStudied = session.studiedToday + 1;
+
       setStudyCards(remainingCards);
       setSession((prev) => ({
         ...prev,
-        studiedToday: prev.studiedToday + 1,
+        studiedToday: nextStudied,
         currentCardIndex: 0,
       }));
+
+      // jeśli osiągnęliśmy limit lekcji, kończymy sesję
+      if (nextStudied >= LESSON_CARD_LIMIT) {
+        setStudyMode('complete');
+        return;
+      }
 
       if (remainingCards.length > 0) {
         setCurrentCard(remainingCards[0]);
@@ -294,99 +315,99 @@ export default function FlashcardStudy() {
     }
   };
 
-  // ⚙️ SETTINGS MODE
-  if (studyMode === 'settings') {
-    return (
-      <Layout>
-        <div className={styles.page}>
-          <div className={styles.settingsContainer}>
-            <div className={styles.settingsHeader}>
-              <h2 className={styles.settingsTitle}>
-                <span className={styles.settingsIcon}>⚙️</span>
-                Ustawienia sesji
-              </h2>
-            </div>
+  // // ⚙️ SETTINGS MODE
+  // if (studyMode === 'settings') {
+  //   return (
+  //     <Layout>
+  //       <div className={styles.page}>
+  //         <div className={styles.settingsContainer}>
+  //           <div className={styles.settingsHeader}>
+  //             <h2 className={styles.settingsTitle}>
+  //               <span className={styles.settingsIcon}>⚙️</span>
+  //               Ustawienia sesji
+  //             </h2>
+  //           </div>
 
-            <div className={styles.settingsForm}>
-              <div className={styles.settingGroup}>
-                <label className={styles.settingLabel}>
-                  <input
-                    type="checkbox"
-                    checked={studySettings.showTimer}
-                    onChange={(e) =>
-                      setStudySettings({
-                        ...studySettings,
-                        showTimer: e.target.checked,
-                      })
-                    }
-                    className={styles.settingCheckbox}
-                  />
-                  <span className={styles.settingIcon}>⏱️</span>
-                  Pokaż timer
-                </label>
-              </div>
+  //           <div className={styles.settingsForm}>
+  //             <div className={styles.settingGroup}>
+  //               <label className={styles.settingLabel}>
+  //                 <input
+  //                   type="checkbox"
+  //                   checked={studySettings.showTimer}
+  //                   onChange={(e) =>
+  //                     setStudySettings({
+  //                       ...studySettings,
+  //                       showTimer: e.target.checked,
+  //                     })
+  //                   }
+  //                   className={styles.settingCheckbox}
+  //                 />
+  //                 <span className={styles.settingIcon}>⏱️</span>
+  //                 Pokaż timer
+  //               </label>
+  //             </div>
 
-              <div className={styles.settingGroup}>
-                <label className={styles.settingLabel}>
-                  <input
-                    type="checkbox"
-                    checked={studySettings.autoFlip}
-                    onChange={(e) =>
-                      setStudySettings({
-                        ...studySettings,
-                        autoFlip: e.target.checked,
-                      })
-                    }
-                    className={styles.settingCheckbox}
-                  />
-                  <span className={styles.settingIcon}>🔄</span>
-                  Auto-flip po 3 sekundach
-                </label>
-              </div>
+  //             <div className={styles.settingGroup}>
+  //               <label className={styles.settingLabel}>
+  //                 <input
+  //                   type="checkbox"
+  //                   checked={studySettings.autoFlip}
+  //                   onChange={(e) =>
+  //                     setStudySettings({
+  //                       ...studySettings,
+  //                       autoFlip: e.target.checked,
+  //                     })
+  //                   }
+  //                   className={styles.settingCheckbox}
+  //                 />
+  //                 <span className={styles.settingIcon}>🔄</span>
+  //                 Auto-flip po 3 sekundach
+  //               </label>
+  //             </div>
 
-              <div className={styles.settingGroup}>
-                <label className={styles.settingLabel}>
-                  <span className={styles.settingIcon}>🆕</span>
-                  Maksymalnie nowych kart dziennie:
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={studySettings.maxNewCards}
-                  onChange={(e) =>
-                    setStudySettings({
-                      ...studySettings,
-                      maxNewCards: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                  className={styles.settingRange}
-                />
-                <span className={styles.settingValue}>
-                  {studySettings.maxNewCards}
-                </span>
-              </div>
-            </div>
+  //             <div className={styles.settingGroup}>
+  //               <label className={styles.settingLabel}>
+  //                 <span className={styles.settingIcon}>🆕</span>
+  //                 Maksymalnie nowych kart dziennie:
+  //               </label>
+  //               <input
+  //                 type="range"
+  //                 min="1"
+  //                 max="50"
+  //                 value={studySettings.maxNewCards}
+  //                 onChange={(e) =>
+  //                   setStudySettings({
+  //                     ...studySettings,
+  //                     maxNewCards: parseInt(
+  //                       e.target.value,
+  //                       10
+  //                     ),
+  //                   })
+  //                 }
+  //                 className={styles.settingRange}
+  //               />
+  //               <span className={styles.settingValue}>
+  //                 {studySettings.maxNewCards}
+  //               </span>
+  //             </div>
+  //           </div>
 
-            <div className={styles.settingsActions}>
-              <button
-                onClick={() => setStudyMode('study')}
-                className={styles.backToStudyBtn}
-              >
-                <span className={styles.backIcon}>🧠</span>
-                Powrót do nauki
-              </button>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  //           <div className={styles.settingsActions}>
+  //             <button
+  //               onClick={() => setStudyMode('study')}
+  //               className={styles.backToStudyBtn}
+  //             >
+  //               <span className={styles.backIcon}>🧠</span>
+  //               Powrót do nauki
+  //             </button>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </Layout>
+  //   );
+  // }
 
-  // 🏁 STUDY COMPLETE
+    // 🏁 STUDY COMPLETE – również przy osiągnięciu LESSON_CARD_LIMIT lub braku kart
   if (studyMode === 'complete') {
     const sessionTime = Math.round(
       (new Date().getTime() -
@@ -402,6 +423,10 @@ export default function FlashcardStudy() {
           )
         : 0;
 
+    const noCards =
+      session.totalCards === 0 ||
+      (studyCards.length === 0 && session.studiedToday === 0);
+
     return (
       <Layout>
         <div className={styles.page}>
@@ -409,59 +434,65 @@ export default function FlashcardStudy() {
             <div className={styles.completeHeader}>
               <div className={styles.completeIcon}>🎉</div>
               <h2 className={styles.completeTitle}>
-                Sesja zakończona!
+                {noCards
+                  ? 'Brak fiszek do nauki w tym zestawie'
+                  : 'Lekcja zakończona!'}
               </h2>
               <p className={styles.completeSubtitle}>
-                Świetna robota! Czas na przerwę.
+                {noCards
+                  ? 'Wszystkie fiszki w tym zestawie masz już oznaczone jako nauczone lub nie ma żadnych kart.'
+                  : `Przerobiłeś dzisiaj ${session.studiedToday} kart.`}
               </p>
             </div>
 
-            <div className={styles.completedStats}>
-              <div className={styles.completedStat}>
-                <div className={styles.completedStatIcon}>
-                  🃏
+            {!noCards && (
+              <div className={styles.completedStats}>
+                <div className={styles.completedStat}>
+                  <div className={styles.completedStatIcon}>
+                    🃏
+                  </div>
+                  <div className={styles.completedStatValue}>
+                    {session.studiedToday}
+                  </div>
+                  <div className={styles.completedStatLabel}>
+                    Przećwiczonych kart
+                  </div>
                 </div>
-                <div className={styles.completedStatValue}>
-                  {session.studiedToday}
+                <div className={styles.completedStat}>
+                  <div className={styles.completedStatIcon}>
+                    🎯
+                  </div>
+                  <div className={styles.completedStatValue}>
+                    {accuracy}%
+                  </div>
+                  <div className={styles.completedStatLabel}>
+                    Celność
+                  </div>
                 </div>
-                <div className={styles.completedStatLabel}>
-                  Przećwiczonych kart
+                <div className={styles.completedStat}>
+                  <div className={styles.completedStatIcon}>
+                    ⏱️
+                  </div>
+                  <div className={styles.completedStatValue}>
+                    {sessionTime} min
+                  </div>
+                  <div className={styles.completedStatLabel}>
+                    Czas sesji
+                  </div>
+                </div>
+                <div className={styles.completedStat}>
+                  <div className={styles.completedStatIcon}>
+                    💎
+                  </div>
+                  <div className={styles.completedStatValue}>
+                    +{stats.points}
+                  </div>
+                  <div className={styles.completedStatLabel}>
+                    Punkty
+                  </div>
                 </div>
               </div>
-              <div className={styles.completedStat}>
-                <div className={styles.completedStatIcon}>
-                  🎯
-                </div>
-                <div className={styles.completedStatValue}>
-                  {accuracy}%
-                </div>
-                <div className={styles.completedStatLabel}>
-                  Celność
-                </div>
-              </div>
-              <div className={styles.completedStat}>
-                <div className={styles.completedStatIcon}>
-                  ⏱️
-                </div>
-                <div className={styles.completedStatValue}>
-                  {sessionTime} min
-                </div>
-                <div className={styles.completedStatLabel}>
-                  Czas sesji
-                </div>
-              </div>
-              <div className={styles.completedStat}>
-                <div className={styles.completedStatIcon}>
-                  💎
-                </div>
-                <div className={styles.completedStatValue}>
-                  +{stats.points}
-                </div>
-                <div className={styles.completedStatLabel}>
-                  Punkty
-                </div>
-              </div>
-            </div>
+            )}
 
             <div className={styles.completeActions}>
               <button
@@ -471,16 +502,7 @@ export default function FlashcardStudy() {
                 <span className={styles.completeActionIcon}>
                   🗂️
                 </span>
-                Wszystkie zestawy
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className={styles.completeBtn}
-              >
-                <span className={styles.completeActionIcon}>
-                  🔄
-                </span>
-                Jeszcze raz
+                Wróć do wyboru zestawu
               </button>
             </div>
           </div>
@@ -488,6 +510,7 @@ export default function FlashcardStudy() {
       </Layout>
     );
   }
+
 
   // ⏳ LOADING STATE
   if (isLoading || !currentCard) {
@@ -524,22 +547,14 @@ export default function FlashcardStudy() {
                       style={{
                         width: `${
                           (session.studiedToday /
-                            Math.max(
-                              1,
-                              session.newCards +
-                                session.reviewCards +
-                                session.learningCards
-                            )) *
+                            Math.max(1, LESSON_CARD_LIMIT)) *
                           100
                         }%`,
                       }}
                     ></div>
                   </div>
                   <span className={styles.progressText}>
-                    {session.studiedToday} /{' '}
-                    {session.newCards +
-                      session.reviewCards +
-                      session.learningCards}
+                    {session.studiedToday} / {LESSON_CARD_LIMIT}
                   </span>
                 </div>
               </div>
