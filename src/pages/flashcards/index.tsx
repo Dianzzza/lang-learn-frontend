@@ -182,7 +182,7 @@ export default function FlashcardsBrowser() {
             <div className={styles.headerActions}>
               <Link href="/flashcards/create" className={styles.createBtn}>
                 <span className={styles.createIcon}>➕</span>
-                Utwórz zestaw
+                Moje fiszki
               </Link>
             </div>
           </div>
