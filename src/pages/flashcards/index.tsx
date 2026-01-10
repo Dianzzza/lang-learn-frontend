@@ -1,11 +1,20 @@
-// src/pages/flashcards/index.tsx
-
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Layout from '@/components/Layout';
 import styles from '@/styles/FlashcardsBrowser.module.css';
+import { apiRequest } from '@/lib/api';
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface DeckStats {
+  totalCards: number;
+  uniqueUsers: number;
+}
 
 interface FlashcardDeck {
   id: number;
@@ -34,82 +43,110 @@ export default function FlashcardsBrowser() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [sortBy, setSortBy] = useState('popular');
 
-  // 🔒 PRZYKŁADOWE ZESTAWY FISZEK
-  const mockDecks: FlashcardDeck[] = [
-    {
-      id: 1,
-      title: 'Basic English Vocabulary',
-      description: 'Essential English words for beginners',
-      cardCount: 150,
-      studyCount: 1243,
-      lastStudied: '2 dni temu',
-      difficulty: 'Łatwe',
-      category: 'Vocabulary',
-      isCreatedByUser: false,
-      creator: 'English Academy',
-      emoji: '🇬🇧',
-      estimatedTime: '15-20 min',
-      tags: ['vocabulary', 'beginner', 'english'],
-      progress: 67,
-      masteredCards: 45,
-      reviewingCards: 32,
-      learningCards: 28,
-      newCards: 45
-    },
-    {
-      id: 2,
-      title: 'Present Simple Tenses',
-      description: 'Practice present simple forms and usage',
-      cardCount: 85,
-      studyCount: 892,
-      lastStudied: '5 godzin temu',
-      difficulty: 'Średnie',
-      category: 'Grammar',
-      isCreatedByUser: true,
-      creator: 'Ty',
-      emoji: '⏰',
-      estimatedTime: '10-15 min',
-      tags: ['grammar', 'present-simple', 'tenses'],
-      progress: 34,
-      masteredCards: 12,
-      reviewingCards: 18,
-      learningCards: 25,
-      newCards: 30
-    },
-    {
-      id: 3,
-      title: 'Business English Phrases',
-      description: 'Professional English for workplace',
-      cardCount: 220,
-      studyCount: 634,
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [deckStats, setDeckStats] = useState<Record<number, DeckStats>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 🔄 Wczytaj kategorie z backendu
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await apiRequest<Category[]>('/categories', 'GET');
+        setCategories(data);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (e: any) {
+        setError(e.message ?? 'Błąd ładowania kategorii');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  // 🔄 Wczytaj statystyki kart i użytkowników dla każdej kategorii
+  useEffect(() => {
+    const loadStats = async () => {
+      if (categories.length === 0) return;
+
+      try {
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('token')
+            : null;
+
+        const statsEntries: [number, DeckStats][] = [];
+
+        for (const cat of categories) {
+          try {
+            const stats = await apiRequest<DeckStats>(
+              `/flashcards/stats?categoryId=${cat.id}`,
+              'GET',
+              undefined,
+              token || undefined
+            );
+            statsEntries.push([cat.id, stats]);
+          } catch {
+            // jeśli dla danej kategorii się nie uda, pomijamy ją
+          }
+        }
+
+        const statsMap: Record<number, DeckStats> = {};
+        for (const [id, stats] of statsEntries) {
+          statsMap[id] = stats;
+        }
+        setDeckStats(statsMap);
+      } catch (e) {
+        console.error('Błąd ładowania statystyk fiszek:', e);
+      }
+    };
+
+    loadStats();
+  }, [categories]);
+
+  // Zamieniamy kategorie na „decki”
+  const decks: FlashcardDeck[] = categories.map((cat) => {
+    const stats = deckStats[cat.id];
+    return {
+      id: cat.id,
+      title: cat.name,
+      description: `Fiszki z kategorii: ${cat.name}`,
+      cardCount: stats ? stats.totalCards : 0,
+      studyCount: stats ? stats.uniqueUsers : 0,
       lastStudied: null,
-      difficulty: 'Trudne',
-      category: 'Business',
+      difficulty: 'Łatwe',
+      category: cat.name,
       isCreatedByUser: false,
-      creator: 'Business Pro',
-      emoji: '💼',
-      estimatedTime: '25-30 min',
-      tags: ['business', 'professional', 'phrases'],
+      creator: 'System',
+      emoji: '📚',
+      estimatedTime: '5-10 min', // zostawiamy stały opis czasu
+      tags: [cat.name.toLowerCase()],
       progress: 0,
       masteredCards: 0,
       reviewingCards: 0,
       learningCards: 0,
-      newCards: 220
-    }
-  ];
+      newCards: 0,
+    };
+  });
 
-  const categories = ['all', 'Vocabulary', 'Grammar', 'Business', 'Conversation'];
+  const categoryFilterOptions = ['all', ...categories.map((c) => c.name)];
   const difficulties = ['all', 'Łatwe', 'Średnie', 'Trudne'];
 
   // 🔍 FILTROWANIE
-  const filteredDecks = mockDecks.filter(deck => {
-    const matchesSearch = deck.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         deck.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         deck.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesCategory = selectedCategory === 'all' || deck.category === selectedCategory;
-    const matchesDifficulty = selectedDifficulty === 'all' || deck.difficulty === selectedDifficulty;
-    
+  const filteredDecks = decks.filter((deck) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      deck.title.toLowerCase().includes(q) ||
+      deck.description.toLowerCase().includes(q) ||
+      deck.tags.some((tag) => tag.toLowerCase().includes(q));
+
+    const matchesCategory =
+      selectedCategory === 'all' || deck.category === selectedCategory;
+    const matchesDifficulty =
+      selectedDifficulty === 'all' ||
+      deck.difficulty === selectedDifficulty;
+
     return matchesSearch && matchesCategory && matchesDifficulty;
   });
 
@@ -129,12 +166,18 @@ export default function FlashcardsBrowser() {
     }
   });
 
-  const getDifficultyColor = (difficulty: FlashcardDeck['difficulty']): string => {
+  const getDifficultyColor = (
+    difficulty: FlashcardDeck['difficulty']
+  ): string => {
     switch (difficulty) {
-      case 'Łatwe': return 'var(--secondary-green)';
-      case 'Średnie': return 'var(--secondary-amber)';
-      case 'Trudne': return 'var(--secondary-red)';
-      default: return 'var(--neutral-500)';
+      case 'Łatwe':
+        return 'var(--secondary-green)';
+      case 'Średnie':
+        return 'var(--secondary-amber)';
+      case 'Trudne':
+        return 'var(--secondary-red)';
+      default:
+        return 'var(--neutral-500)';
     }
   };
 
@@ -145,11 +188,67 @@ export default function FlashcardsBrowser() {
     return count.toString();
   };
 
+  const handleResetDeck = async (categoryId: number) => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('token')
+        : null;
+    if (!token) {
+      alert('Musisz być zalogowany.');
+      return;
+    }
+    if (!confirm('Na pewno zresetować ten zestaw?')) return;
+
+    try {
+      await apiRequest(
+        '/flashcards/reset',
+        'POST',
+        { categoryId },
+        token
+      );
+      alert(
+        'Zestaw został zresetowany. Wszystkie fiszki będą traktowane jako nowe.'
+      );
+    } catch (e: any) {
+      console.error('Błąd resetowania zestawu:', e);
+      alert(e?.message ?? 'Nie udało się zresetować zestawu.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.container}>
+            <div className={styles.resultsHeader}>
+              <div className={styles.resultsInfo}>
+                Ładowanie kategorii...
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.container}>
+            <div className={styles.resultsHeader}>
+              <div className={styles.resultsInfo}>Błąd: {error}</div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className={styles.page}>
         <div className={styles.container}>
-          
           {/* 🎯 HEADER */}
           <div className={styles.pageHeader}>
             <div className={styles.headerLeft}>
@@ -158,13 +257,17 @@ export default function FlashcardsBrowser() {
                 Fiszki
               </h1>
               <p className={styles.pageDescription}>
-                Wybierz zestaw fiszek do nauki lub utwórz własny
+                Wybierz kategorię fiszek do nauki lub utwórz własny
+                zestaw
               </p>
             </div>
             <div className={styles.headerActions}>
-              <Link href="/flashcards/create" className={styles.createBtn}>
+              <Link
+                href="/flashcards/create"
+                className={styles.createBtn}
+              >
                 <span className={styles.createIcon}>➕</span>
-                Utwórz zestaw
+                Moje fiszki
               </Link>
             </div>
           </div>
@@ -175,22 +278,26 @@ export default function FlashcardsBrowser() {
               <span className={styles.searchIcon}>🔍</span>
               <input
                 type="text"
-                placeholder="Szukaj zestawów fiszek..."
+                placeholder="Szukaj kategorii / zestawów..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={styles.searchInput}
               />
             </div>
-            
+
             <div className={styles.filters}>
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Kategoria:</label>
-                <select 
+                <label className={styles.filterLabel}>
+                  Kategoria:
+                </label>
+                <select
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) =>
+                    setSelectedCategory(e.target.value)
+                  }
                   className={styles.filterSelect}
                 >
-                  {categories.map(cat => (
+                  {categoryFilterOptions.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat === 'all' ? 'Wszystkie' : cat}
                     </option>
@@ -200,12 +307,14 @@ export default function FlashcardsBrowser() {
 
               <div className={styles.filterGroup}>
                 <label className={styles.filterLabel}>Poziom:</label>
-                <select 
+                <select
                   value={selectedDifficulty}
-                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  onChange={(e) =>
+                    setSelectedDifficulty(e.target.value)
+                  }
                   className={styles.filterSelect}
                 >
-                  {difficulties.map(diff => (
+                  {difficulties.map((diff) => (
                     <option key={diff} value={diff}>
                       {diff === 'all' ? 'Wszystkie' : diff}
                     </option>
@@ -215,7 +324,7 @@ export default function FlashcardsBrowser() {
 
               <div className={styles.filterGroup}>
                 <label className={styles.filterLabel}>Sortuj:</label>
-                <select 
+                <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className={styles.filterSelect}
@@ -223,7 +332,9 @@ export default function FlashcardsBrowser() {
                   <option value="popular">Popularne</option>
                   <option value="newest">Najnowsze</option>
                   <option value="progress">Postęp</option>
-                  <option value="alphabetical">Alfabetycznie</option>
+                  <option value="alphabetical">
+                    Alfabetycznie
+                  </option>
                 </select>
               </div>
             </div>
@@ -232,10 +343,13 @@ export default function FlashcardsBrowser() {
           {/* 📊 RESULTS STATS */}
           <div className={styles.resultsHeader}>
             <div className={styles.resultsInfo}>
-              Znaleziono <strong>{sortedDecks.length}</strong> zestawów
+              Znaleziono <strong>{sortedDecks.length}</strong>{' '}
+              kategorii
             </div>
             <div className={styles.viewToggle}>
-              <button className={`${styles.viewBtn} ${styles.active}`}>
+              <button
+                className={`${styles.viewBtn} ${styles.active}`}
+              >
                 <span>📋</span>
               </button>
               <button className={styles.viewBtn}>
@@ -247,24 +361,25 @@ export default function FlashcardsBrowser() {
           {/* 📚 DECKS GRID */}
           <div className={styles.decksGrid}>
             {sortedDecks.map((deck, index) => (
-              <div 
-                key={deck.id} 
+              <div
+                key={deck.id}
                 className={styles.deckCard}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                
                 {/* 🎨 DECK HEADER */}
                 <div className={styles.deckHeader}>
-                  <div className={styles.deckIcon}>
-                    {deck.emoji}
-                  </div>
+                  <div className={styles.deckIcon}>{deck.emoji}</div>
                   <div className={styles.deckMeta}>
                     <div className={styles.deckCreator}>
-                      {deck.isCreatedByUser ? '👤 Twój zestaw' : `👥 ${deck.creator}`}
+                      {deck.isCreatedByUser
+                        ? '👤 Twój zestaw'
+                        : `👥 ${deck.creator}`}
                     </div>
-                    <div 
+                    <div
                       className={styles.deckDifficulty}
-                      style={{ color: getDifficultyColor(deck.difficulty) }}
+                      style={{
+                        color: getDifficultyColor(deck.difficulty),
+                      }}
                     >
                       {deck.difficulty}
                     </div>
@@ -273,9 +388,7 @@ export default function FlashcardsBrowser() {
 
                 {/* 📝 DECK CONTENT */}
                 <div className={styles.deckContent}>
-                  <h3 className={styles.deckTitle}>
-                    {deck.title}
-                  </h3>
+                  <h3 className={styles.deckTitle}>{deck.title}</h3>
                   <p className={styles.deckDescription}>
                     {deck.description}
                   </p>
@@ -284,21 +397,27 @@ export default function FlashcardsBrowser() {
                   <div className={styles.deckStats}>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>🃏</span>
-                      <span className={styles.statText}>{deck.cardCount} kart</span>
+                      <span className={styles.statText}>
+                        {deck.cardCount} kart
+                      </span>
                     </div>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>👥</span>
-                      <span className={styles.statText}>{formatStudyCount(deck.studyCount)} użytkowników</span>
+                      <span className={styles.statText}>
+                        {formatStudyCount(deck.studyCount)} użytkowników
+                      </span>
                     </div>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>⏱️</span>
-                      <span className={styles.statText}>{deck.estimatedTime}</span>
+                      <span className={styles.statText}>
+                        {deck.estimatedTime}
+                      </span>
                     </div>
                   </div>
 
                   {/* 🏷️ TAGS */}
                   <div className={styles.deckTags}>
-                    {deck.tags.slice(0, 3).map(tag => (
+                    {deck.tags.slice(0, 3).map((tag) => (
                       <span key={tag} className={styles.tag}>
                         #{tag}
                       </span>
@@ -310,32 +429,43 @@ export default function FlashcardsBrowser() {
                 {deck.progress > 0 && (
                   <div className={styles.progressSection}>
                     <div className={styles.progressHeader}>
-                      <span className={styles.progressLabel}>Postęp:</span>
-                      <span className={styles.progressPercent}>{deck.progress}%</span>
+                      <span className={styles.progressLabel}>
+                        Postęp:
+                      </span>
+                      <span className={styles.progressPercent}>
+                        {deck.progress}%
+                      </span>
                     </div>
                     <div className={styles.progressBar}>
-                      <div 
+                      <div
                         className={styles.progressFill}
                         style={{ width: `${deck.progress}%` }}
                       ></div>
                     </div>
-                    
-                    {/* 📊 CARD BREAKDOWN */}
+
                     <div className={styles.cardBreakdown}>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.mastered}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.mastered}`}
+                        ></div>
                         <span>{deck.masteredCards}</span>
                       </div>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.reviewing}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.reviewing}`}
+                        ></div>
                         <span>{deck.reviewingCards}</span>
                       </div>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.learning}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.learning}`}
+                        ></div>
                         <span>{deck.learningCards}</span>
                       </div>
                       <div className={styles.cardStat}>
-                        <div className={`${styles.cardDot} ${styles.new}`}></div>
+                        <div
+                          className={`${styles.cardDot} ${styles.new}`}
+                        ></div>
                         <span>{deck.newCards}</span>
                       </div>
                     </div>
@@ -344,41 +474,31 @@ export default function FlashcardsBrowser() {
 
                 {/* 🎮 DECK ACTIONS */}
                 <div className={styles.deckActions}>
-                  <Link 
+                  <Link
                     href={`/flashcards/${deck.id}/study`}
                     className={`${styles.actionBtn} ${styles.study}`}
                   >
                     <span className={styles.actionIcon}>🧠</span>
                     {deck.progress > 0 ? 'Kontynuuj' : 'Rozpocznij'}
                   </Link>
-                  
-                  <Link 
-                    href={`/flashcards/${deck.id}/preview`}
-                    className={`${styles.actionBtn} ${styles.preview}`}
+
+                  {/* Podgląd na razie wyłączony */}
+
+                  <button
+                    className={`${styles.actionBtn} ${styles.edit}`}
+                    onClick={() => handleResetDeck(deck.id)}
                   >
-                    <span className={styles.actionIcon}>👁️</span>
-                    Podgląd
-                  </Link>
-                  
-                  {deck.isCreatedByUser && (
-                    <Link 
-                      href={`/flashcards/${deck.id}/edit`}
-                      className={`${styles.actionBtn} ${styles.edit}`}
-                    >
-                      <span className={styles.actionIcon}>✏️</span>
-                      Edytuj
-                    </Link>
-                  )}
+                    <span className={styles.actionIcon}>♻️</span>
+                    Resetuj
+                  </button>
                 </div>
 
-                {/* 🕒 LAST STUDIED */}
                 {deck.lastStudied && (
                   <div className={styles.lastStudied}>
                     <span className={styles.lastStudiedIcon}>🕒</span>
                     Ostatnio: {deck.lastStudied}
                   </div>
                 )}
-
               </div>
             ))}
           </div>
@@ -387,11 +507,11 @@ export default function FlashcardsBrowser() {
           {sortedDecks.length === 0 && (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>🔍</div>
-              <div className={styles.emptyTitle}>Brak zestawów</div>
+              <div className={styles.emptyTitle}>Brak kategorii</div>
               <div className={styles.emptyDescription}>
-                Nie znaleziono zestawów pasujących do Twoich kryteriów
+                Nie znaleziono kategorii pasujących do Twoich kryteriów
               </div>
-              <button 
+              <button
                 className={styles.clearFiltersBtn}
                 onClick={() => {
                   setSearchQuery('');
@@ -408,24 +528,27 @@ export default function FlashcardsBrowser() {
           <div className={styles.bottomStats}>
             <div className={styles.statBox}>
               <div className={styles.statValue}>
-                {mockDecks.reduce((sum, deck) => sum + deck.cardCount, 0)}
+                {decks.length}
               </div>
-              <div className={styles.statLabel}>Dostępne karty</div>
+              <div className={styles.statLabel}>
+                Kategorie fiszek
+              </div>
             </div>
             <div className={styles.statBox}>
               <div className={styles.statValue}>
-                {mockDecks.filter(d => d.isCreatedByUser).length}
+                {decks.filter((d) => d.isCreatedByUser).length}
               </div>
               <div className={styles.statLabel}>Twoje zestawy</div>
             </div>
             <div className={styles.statBox}>
               <div className={styles.statValue}>
-                {mockDecks.filter(d => d.progress > 0).length}
+                {decks.filter((d) => d.progress > 0).length}
               </div>
-              <div className={styles.statLabel}>W trakcie nauki</div>
+              <div className={styles.statLabel}>
+                W trakcie nauki
+              </div>
             </div>
           </div>
-
         </div>
       </div>
     </Layout>
