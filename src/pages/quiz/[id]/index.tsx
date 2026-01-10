@@ -1,165 +1,315 @@
-// pages/quiz/[id]/index.tsx
-// SESJA QUIZU - interaktywne rozwiązywanie
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import styles from '@/styles/QuizSession.module.css';
+import { apiRequest } from '@/lib/api';
 
-interface QuizQuestion {
+type Difficulty = 'easy' | 'medium' | 'hard';
+
+interface QuizSessionDtoQuestion {
   id: number;
-  type: 'multiple-choice' | 'gap-fill' | 'matching' | 'true-false' | 'listening' | 'transformation';
-  question: string;
-  audioUrl?: string;
-  imageUrl?: string;
-  options?: string[];
-  correctAnswer: string | string[] | number;
-  explanation?: string;
-  hint?: string;
-  points: number;
+  sentence: string;
+  polishWord: string | null;
+  options: string[];
+  correctIndex: number;
 }
 
-interface QuizSession {
-  quizId: number;
-  title: string;
-  currentQuestion: number;
-  totalQuestions: number;
-  score: number;
-  maxScore: number;
-  timeRemaining: number;
-  hasTimer: boolean;
-  startTime: Date;
-  answers: Record<number, any>;
-  isComplete: boolean;
+interface QuizSessionDto {
+  categoryId: number;
+  difficulty: Difficulty;
+  optionCount: number;
+  questions: QuizSessionDtoQuestion[];
 }
 
-export default function QuizSession({ params }: { params?: { id?: string } }) {
+type Screen = 'start' | 'quiz' | 'complete';
+
+export default function QuizSessionPage() {
   const router = useRouter();
-  const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<any>(null);
-  const [showHint, setShowHint] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
+
+  const categoryId = useMemo(() => {
+    const raw = router.query?.id;
+    const idStr = Array.isArray(raw) ? raw[0] : raw;
+    const parsed = idStr ? parseInt(idStr, 10) : NaN;
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [router.query?.id]);
+
+  const [screen, setScreen] = useState<Screen>('start');
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [session, setSession] = useState<QuizSessionDto | null>(null);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
 
-  const quizId = params?.id ? parseInt(params.id) : 1;
+  const [score, setScore] = useState(0);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [answers, setAnswers] = useState<Record<number, number>>({}); // questionId -> chosenIndex
 
-  // 🔒 PRZYKŁADOWE PYTANIA
-  const [questions] = useState<QuizQuestion[]>([
-    {
-      id: 1,
-      type: 'multiple-choice',
-      question: 'Which sentence is correct?',
-      options: [
-        'I am working in London now.',
-        'I work in London now.',
-        'I working in London now.',
-        'I am work in London now.'
-      ],
-      correctAnswer: 0,
-      explanation: 'Present Continuous (am working) is used for temporary actions happening now.',
-      hint: 'Think about temporary vs permanent actions',
-      points: 10
-    },
-    {
-      id: 2,
-      type: 'gap-fill',
-      question: 'Complete the sentence: She _____ (go) to school every day.',
-      correctAnswer: 'goes',
-      explanation: 'Present Simple uses "goes" for third person singular.',
-      hint: 'Third person singular form',
-      points: 10
-    },
-    {
-      id: 3,
-      type: 'transformation',
-      question: 'Transform: "I eat breakfast at 8 AM" → "I _____ breakfast right now"',
-      correctAnswer: 'am eating',
-      explanation: 'Change from Present Simple to Present Continuous for actions happening now.',
-      hint: 'Use Present Continuous form',
-      points: 15
+  const [resultSaved, setResultSaved] = useState(false);
+
+  const currentQuestion = session?.questions?.[currentIndex] ?? null;
+
+  const maxScore = useMemo(() => {
+    const count = session?.questions?.length || 0;
+    return count * 10;
+  }, [session]);
+
+  const percentage = useMemo(() => {
+    if (!session || maxScore === 0) return 0;
+    return Math.round((score / maxScore) * 100);
+  }, [score, maxScore, session]);
+
+  const loadSession = async () => {
+    if (!categoryId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await apiRequest<QuizSessionDto>(
+        `/quizzes/session?categoryId=${categoryId}&difficulty=${difficulty}&limit=10`,
+        'GET'
+      );
+      setSession(data);
+
+      setCurrentIndex(0);
+      setSelectedIndex(null);
+      setIsAnswered(false);
+      setScore(0);
+      setAnswers({});
+      setStartTime(new Date());
+      setResultSaved(false);
+      setScreen('quiz');
+    } catch (e: any) {
+      setError(e?.message ?? 'Nie udało się pobrać sesji quizu');
+      setScreen('start');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const [session, setSession] = useState<QuizSession>({
-    quizId: quizId,
-    title: 'Present Simple vs Present Continuous',
-    currentQuestion: 0,
-    totalQuestions: questions.length,
-    score: 0,
-    maxScore: questions.reduce((sum, q) => sum + q.points, 0),
-    timeRemaining: 600, // 10 minut w sekundach
-    hasTimer: true,
-    startTime: new Date(),
-    answers: {},
-    isComplete: false
-  });
-
-  // ⏱️ TIMER EFFECT
+  // gdy zmienia się id w URL, wracamy do startu
   useEffect(() => {
-    if (session.hasTimer && session.timeRemaining > 0 && !session.isComplete) {
-      const timer = setInterval(() => {
-        setSession(prev => {
-          const newTimeRemaining = prev.timeRemaining - 1;
-          if (newTimeRemaining <= 0) {
-            return { ...prev, timeRemaining: 0, isComplete: true };
-          }
-          return { ...prev, timeRemaining: newTimeRemaining };
-        });
-      }, 1000);
+    if (!router.isReady) return;
+    setScreen('start');
+    setSession(null);
+    setError(null);
+    setResultSaved(false);
+  }, [router.isReady, categoryId]);
 
-      return () => clearInterval(timer);
-    }
-  }, [session.hasTimer, session.timeRemaining, session.isComplete]);
-
-  // 🔄 SET CURRENT QUESTION
-  useEffect(() => {
-    if (questions.length > 0 && session.currentQuestion < questions.length) {
-      setCurrentQuestion(questions[session.currentQuestion]);
-      setSelectedAnswer(session.answers[session.currentQuestion] || null);
-      setIsAnswered(!!session.answers[session.currentQuestion]);
-      setShowExplanation(false);
-      setShowHint(false);
-    }
-  }, [session.currentQuestion, questions]);
-
-  // ✅ SUBMIT ANSWER
   const submitAnswer = () => {
-    if (!currentQuestion || selectedAnswer === null) return;
+    if (!currentQuestion) return;
+    if (selectedIndex === null) return;
 
-    const isCorrect = Array.isArray(currentQuestion.correctAnswer)
-      ? currentQuestion.correctAnswer.includes(selectedAnswer)
-      : currentQuestion.correctAnswer === selectedAnswer;
+    const isCorrect = selectedIndex === currentQuestion.correctIndex;
 
-    const points = isCorrect ? currentQuestion.points : 0;
-
-    setSession(prev => ({
-      ...prev,
-      answers: { ...prev.answers, [session.currentQuestion]: selectedAnswer },
-      score: prev.score + points
-    }));
-
+    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: selectedIndex }));
     setIsAnswered(true);
-    setShowExplanation(true);
+
+    if (isCorrect) setScore((prev) => prev + 10);
   };
 
-  // ⏭️ NEXT QUESTION
   const nextQuestion = () => {
-    if (session.currentQuestion + 1 < questions.length) {
-      setSession(prev => ({
-        ...prev,
-        currentQuestion: prev.currentQuestion + 1
-      }));
+    if (!session) return;
+
+    const next = currentIndex + 1;
+    if (next < session.questions.length) {
+      setCurrentIndex(next);
+
+      const nextQ = session.questions[next];
+      const prevAnswer = answers[nextQ.id];
+
+      setSelectedIndex(typeof prevAnswer === 'number' ? prevAnswer : null);
+      setIsAnswered(typeof prevAnswer === 'number');
     } else {
-      setSession(prev => ({ ...prev, isComplete: true }));
+      setScreen('complete');
     }
   };
 
-  // 📊 QUIZ COMPLETE
-  if (session.isComplete) {
-    const percentage = Math.round((session.score / session.maxScore) * 100);
-    const sessionTime = Math.round((new Date().getTime() - session.startTime.getTime()) / 60000);
+  const durationSec = useMemo(() => {
+    if (!startTime) return 0;
+    return Math.max(
+      0,
+      Math.round((new Date().getTime() - startTime.getTime()) / 1000)
+    );
+  }, [startTime, screen]);
+
+  // ✅ zapis wyniku po zakończeniu (tylko raz, tylko jak zalogowany)
+  useEffect(() => {
+    const save = async () => {
+      if (screen !== 'complete') return;
+      if (!session) return;
+      if (!startTime) return;
+      if (resultSaved) return;
+
+      const token =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('token')
+          : null;
+
+      // minimalna wersja: jak nie ma tokena, nie zapisujemy
+      if (!token) return;
+
+      try {
+        await apiRequest(
+          '/quizzes/attempts',
+          'POST',
+          {
+            categoryId: session.categoryId,
+            difficulty: session.difficulty,
+            score,
+            maxScore,
+            durationSec,
+          },
+          token
+        );
+        setResultSaved(true);
+      } catch (e) {
+        console.error('Nie udało się zapisać wyniku quizu:', e);
+      }
+    };
+
+    save();
+  }, [screen, session, startTime, score, maxScore, durationSec, resultSaved]);
+
+  // =============== LOADING ROUTE ===============
+  if (!router.isReady || categoryId === null) {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.loadingContainer}>
+            <div className={styles.loadingIcon}>🔄</div>
+            <div className={styles.loadingText}>Ładowanie...</div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // =============== START SCREEN ===============
+  if (screen === 'start') {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.quizContainer}>
+            <div className={styles.quizHeader}>
+              <div className={styles.quizInfo}>
+                <h1 className={styles.quizTitle}>
+                  <span className={styles.quizIcon}>🧠</span>
+                  Quiz
+                </h1>
+                <div className={styles.quizProgress}>
+                  <span className={styles.progressText}>
+                    Wybierz trudność i rozpocznij
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.quizControls}>
+                <div className={styles.score}>
+                  <span className={styles.scoreIcon}>💎</span>
+                  0 pkt
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.questionCard}>
+              <div className={styles.questionContent}>
+                <h2 className={styles.questionText}>Ustawienia sesji</h2>
+
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 8, opacity: 0.9 }}>
+                    Poziom trudności:
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      className={styles.optionBtn}
+                      onClick={() => setDifficulty('easy')}
+                      disabled={loading}
+                      style={{
+                        border:
+                          difficulty === 'easy'
+                            ? '2px solid var(--secondary-green)'
+                            : undefined,
+                      }}
+                    >
+                      Łatwy (2 opcje)
+                    </button>
+
+                    <button
+                      className={styles.optionBtn}
+                      onClick={() => setDifficulty('medium')}
+                      disabled={loading}
+                      style={{
+                        border:
+                          difficulty === 'medium'
+                            ? '2px solid var(--secondary-amber)'
+                            : undefined,
+                      }}
+                    >
+                      Średni (3 opcje)
+                    </button>
+
+                    <button
+                      className={styles.optionBtn}
+                      onClick={() => setDifficulty('hard')}
+                      disabled={loading}
+                      style={{
+                        border:
+                          difficulty === 'hard'
+                            ? '2px solid var(--secondary-red)'
+                            : undefined,
+                      }}
+                    >
+                      Trudny (4 opcje)
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <div style={{ marginTop: 12, color: 'var(--secondary-red)' }}>
+                    {error}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.questionActions}>
+                <button
+                  onClick={loadSession}
+                  className={styles.submitBtn}
+                  disabled={loading}
+                >
+                  <span className={styles.submitIcon}>🚀</span>
+                  {loading ? 'Startuję...' : 'Rozpocznij quiz'}
+                </button>
+
+                <button
+                  onClick={() => router.push('/quiz')}
+                  className={styles.nextBtn}
+                  disabled={loading}
+                >
+                  <span className={styles.nextIcon}>🧠</span>
+                  Wróć do listy quizów
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // =============== COMPLETE SCREEN ===============
+  if (screen === 'complete') {
+    const answeredCount = Object.keys(answers).length;
+    const sessionTimeMin = Math.round(durationSec / 60);
 
     return (
       <Layout>
@@ -172,21 +322,25 @@ export default function QuizSession({ params }: { params?: { id?: string } }) {
               <h2 className={styles.resultsTitle}>Quiz zakończony!</h2>
               <div className={styles.finalScore}>
                 <span className={styles.scoreNumber}>{percentage}%</span>
-                <span className={styles.scoreLabel}>({session.score}/{session.maxScore} pkt)</span>
+                <span className={styles.scoreLabel}>
+                  ({score}/{maxScore} pkt)
+                </span>
               </div>
             </div>
 
             <div className={styles.resultsStats}>
               <div className={styles.resultsStat}>
                 <div className={styles.resultsStatIcon}>⏱️</div>
-                <div className={styles.resultsStatValue}>{sessionTime} min</div>
+                <div className={styles.resultsStatValue}>{sessionTimeMin} min</div>
                 <div className={styles.resultsStatLabel}>Czas</div>
               </div>
+
               <div className={styles.resultsStat}>
                 <div className={styles.resultsStatIcon}>✅</div>
-                <div className={styles.resultsStatValue}>{Object.keys(session.answers).length}</div>
+                <div className={styles.resultsStatValue}>{answeredCount}</div>
                 <div className={styles.resultsStatLabel}>Odpowiedzi</div>
               </div>
+
               <div className={styles.resultsStat}>
                 <div className={styles.resultsStatIcon}>🎯</div>
                 <div className={styles.resultsStatValue}>{percentage}%</div>
@@ -195,10 +349,18 @@ export default function QuizSession({ params }: { params?: { id?: string } }) {
             </div>
 
             <div className={styles.resultsActions}>
-              <button onClick={() => window.location.reload()} className={styles.retryBtn}>
+              <button
+                onClick={() => {
+                  setScreen('start');
+                  setSession(null);
+                  setError(null);
+                }}
+                className={styles.retryBtn}
+              >
                 <span className={styles.retryIcon}>🔄</span>
-                Spróbuj ponownie
+                Zmień trudność / spróbuj ponownie
               </button>
+
               <button onClick={() => router.push('/quiz')} className={styles.browseBtn}>
                 <span className={styles.browseIcon}>🧠</span>
                 Inne quizy
@@ -210,7 +372,8 @@ export default function QuizSession({ params }: { params?: { id?: string } }) {
     );
   }
 
-  if (!currentQuestion) {
+  // =============== QUIZ SCREEN ===============
+  if (!session || !currentQuestion) {
     return (
       <Layout>
         <div className={styles.page}>
@@ -223,47 +386,41 @@ export default function QuizSession({ params }: { params?: { id?: string } }) {
     );
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const progressPercent =
+    session.questions.length > 0
+      ? (currentIndex / session.questions.length) * 100
+      : 0;
 
   return (
     <Layout>
       <div className={styles.page}>
         <div className={styles.quizContainer}>
-          
           {/* 🎯 QUIZ HEADER */}
           <div className={styles.quizHeader}>
             <div className={styles.quizInfo}>
               <h1 className={styles.quizTitle}>
                 <span className={styles.quizIcon}>🧠</span>
-                {session.title}
+                Quiz (kategoria {session.categoryId})
               </h1>
+
               <div className={styles.quizProgress}>
                 <div className={styles.progressBar}>
-                  <div 
+                  <div
                     className={styles.progressFill}
-                    style={{ width: `${(session.currentQuestion / session.totalQuestions) * 100}%` }}
+                    style={{ width: `${progressPercent}%` }}
                   ></div>
                 </div>
+
                 <span className={styles.progressText}>
-                  {session.currentQuestion + 1} / {session.totalQuestions}
+                  {currentIndex + 1} / {session.questions.length}
                 </span>
               </div>
             </div>
 
             <div className={styles.quizControls}>
-              {session.hasTimer && (
-                <div className={`${styles.timer} ${session.timeRemaining < 60 ? styles.warning : ''}`}>
-                  <span className={styles.timerIcon}>⏱️</span>
-                  {formatTime(session.timeRemaining)}
-                </div>
-              )}
               <div className={styles.score}>
                 <span className={styles.scoreIcon}>💎</span>
-                {session.score} pkt
+                {score} pkt
               </div>
             </div>
           </div>
@@ -271,176 +428,71 @@ export default function QuizSession({ params }: { params?: { id?: string } }) {
           {/* ❓ QUESTION CARD */}
           <div className={styles.questionCard}>
             <div className={styles.questionHeader}>
-              <div className={styles.questionType}>
-                {currentQuestion.type === 'multiple-choice' && '🎯 Wybór wielokrotny'}
-                {currentQuestion.type === 'gap-fill' && '✏️ Uzupełnij lukę'}
-                {currentQuestion.type === 'transformation' && '🔄 Przekształć'}
-                {currentQuestion.type === 'true-false' && '✅ Prawda/Fałsz'}
-                {currentQuestion.type === 'matching' && '🔗 Dopasuj'}
-                {currentQuestion.type === 'listening' && '🎧 Słuchanie'}
-              </div>
+              <div className={styles.questionType}>🎯 Wybór wielokrotny</div>
               <div className={styles.questionPoints}>
-                <span className={styles.pointsIcon}>💎</span>
-                {currentQuestion.points} pkt
+                <span className={styles.pointsIcon}>💎</span>10 pkt
               </div>
             </div>
 
             <div className={styles.questionContent}>
-              <h2 className={styles.questionText}>
-                {currentQuestion.question}
-              </h2>
-              
-              {currentQuestion.imageUrl && (
-                <div className={styles.questionImage}>
-                  <img src={currentQuestion.imageUrl} alt="Question visual" />
-                </div>
-              )}
+              <h2 className={styles.questionText}>{currentQuestion.sentence}</h2>
 
-              {currentQuestion.audioUrl && (
-                <div className={styles.audioPlayer}>
-                  <button className={styles.playAudioBtn}>
-                    <span className={styles.audioIcon}>🔊</span>
-                    Odtwórz nagranie
-                  </button>
-                </div>
-              )}
+              <div style={{ marginTop: 10, opacity: 0.9 }}>
+                Podpowiedź (PL): <strong>{currentQuestion.polishWord ?? '—'}</strong>
+              </div>
             </div>
 
-            {/* 🎮 ANSWER INTERFACE */}
+            {/* 🎮 ANSWERS */}
             <div className={styles.answerInterface}>
-              
-              {/* MULTIPLE CHOICE */}
-              {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
-                <div className={styles.multipleChoice}>
-                  {currentQuestion.options.map((option, index) => (
+              <div className={styles.multipleChoice}>
+                {currentQuestion.options.map((opt, idx) => {
+                  const isCorrect = idx === currentQuestion.correctIndex;
+                  const isSelected = selectedIndex === idx;
+
+                  const className = `${styles.optionBtn}
+                    ${isSelected ? styles.selected : ''}
+                    ${isAnswered && isCorrect ? styles.correct : ''}
+                    ${isAnswered && isSelected && !isCorrect ? styles.incorrect : ''}
+                  `;
+
+                  return (
                     <button
-                      key={index}
-                      onClick={() => !isAnswered && setSelectedAnswer(index)}
-                      className={`${styles.optionBtn} 
-                        ${selectedAnswer === index ? styles.selected : ''} 
-                        ${isAnswered && index === currentQuestion.correctAnswer ? styles.correct : ''}
-                        ${isAnswered && selectedAnswer === index && index !== currentQuestion.correctAnswer ? styles.incorrect : ''}
-                      `}
+                      key={opt + idx}
+                      onClick={() => !isAnswered && setSelectedIndex(idx)}
+                      className={className}
                       disabled={isAnswered}
                     >
                       <span className={styles.optionLetter}>
-                        {String.fromCharCode(65 + index)}
+                        {String.fromCharCode(65 + idx)}
                       </span>
-                      {option}
+                      {opt}
                     </button>
-                  ))}
-                </div>
-              )}
-
-              {/* GAP FILL */}
-              {currentQuestion.type === 'gap-fill' && (
-                <div className={styles.gapFill}>
-                  <input
-                    type="text"
-                    placeholder="Wpisz odpowiedź..."
-                    value={selectedAnswer || ''}
-                    onChange={(e) => !isAnswered && setSelectedAnswer(e.target.value)}
-                    className={`${styles.gapInput} 
-                      ${isAnswered && selectedAnswer?.toLowerCase() === currentQuestion.correctAnswer?.toString().toLowerCase() ? styles.correct : ''}
-                      ${isAnswered && selectedAnswer?.toLowerCase() !== currentQuestion.correctAnswer?.toString().toLowerCase() ? styles.incorrect : ''}
-                    `}
-                    disabled={isAnswered}
-                  />
-                  {isAnswered && (
-                    <div className={styles.correctAnswer}>
-                      <strong>Prawidłowa odpowiedź:</strong> {currentQuestion.correctAnswer}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TRUE/FALSE */}
-              {currentQuestion.type === 'true-false' && (
-                <div className={styles.trueFalse}>
-                  <button
-                    onClick={() => !isAnswered && setSelectedAnswer(true)}
-                    className={`${styles.tfBtn} ${styles.trueBtn} 
-                      ${selectedAnswer === true ? styles.selected : ''}
-                      ${isAnswered && currentQuestion.correctAnswer === true ? styles.correct : ''}
-                      ${isAnswered && selectedAnswer === true && currentQuestion.correctAnswer === false ? styles.incorrect : ''}
-                    `}
-                    disabled={isAnswered}
-                  >
-                    <span className={styles.tfIcon}>✅</span>
-                    Prawda
-                  </button>
-                  <button
-                    onClick={() => !isAnswered && setSelectedAnswer(false)}
-                    className={`${styles.tfBtn} ${styles.falseBtn}
-                      ${selectedAnswer === false ? styles.selected : ''}
-                      ${isAnswered && currentQuestion.correctAnswer === false ? styles.correct : ''}
-                      ${isAnswered && selectedAnswer === false && currentQuestion.correctAnswer === true ? styles.incorrect : ''}
-                    `}
-                    disabled={isAnswered}
-                  >
-                    <span className={styles.tfIcon}>❌</span>
-                    Fałsz
-                  </button>
-                </div>
-              )}
-
+                  );
+                })}
+              </div>
             </div>
 
-            {/* 💡 HINT */}
-            {currentQuestion.hint && !isAnswered && (
-              <div className={styles.hintSection}>
-                <button 
-                  onClick={() => setShowHint(!showHint)}
-                  className={styles.hintBtn}
-                >
-                  <span className={styles.hintIcon}>💡</span>
-                  {showHint ? 'Ukryj podpowiedź' : 'Pokaż podpowiedź'}
-                </button>
-                {showHint && (
-                  <div className={styles.hintText}>
-                    {currentQuestion.hint}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 📚 EXPLANATION */}
-            {showExplanation && currentQuestion.explanation && (
-              <div className={styles.explanationSection}>
-                <div className={styles.explanationHeader}>
-                  <span className={styles.explanationIcon}>📚</span>
-                  Wyjaśnienie:
-                </div>
-                <div className={styles.explanationText}>
-                  {currentQuestion.explanation}
-                </div>
-              </div>
-            )}
-
-            {/* 🎮 QUESTION ACTIONS */}
+            {/* 🎮 ACTIONS */}
             <div className={styles.questionActions}>
               {!isAnswered ? (
-                <button 
+                <button
                   onClick={submitAnswer}
-                  disabled={selectedAnswer === null || selectedAnswer === ''}
+                  disabled={selectedIndex === null}
                   className={styles.submitBtn}
                 >
                   <span className={styles.submitIcon}>✅</span>
                   Sprawdź odpowiedź
                 </button>
               ) : (
-                <button 
-                  onClick={nextQuestion}
-                  className={styles.nextBtn}
-                >
+                <button onClick={nextQuestion} className={styles.nextBtn}>
                   <span className={styles.nextIcon}>➡️</span>
-                  {session.currentQuestion + 1 < session.totalQuestions ? 'Następne pytanie' : 'Zakończ quiz'}
+                  {currentIndex + 1 < session.questions.length
+                    ? 'Następne pytanie'
+                    : 'Zakończ quiz'}
                 </button>
               )}
             </div>
-
           </div>
-
         </div>
       </div>
     </Layout>
