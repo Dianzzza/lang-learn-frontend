@@ -1,132 +1,119 @@
-// pages/tests/[id]/index.tsx
-// FORMALNA SESJA TESTOWA - jak Cambridge
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import styles from '@/styles/TestSession.module.css';
 
-interface TestSection {
+type TestTemplateDTO = {
   id: number;
-  name: string;
-  skill: 'reading' | 'writing' | 'listening' | 'use-of-english';
-  timeLimit: number; // minuty
-  questionsCount: number;
-  isCompleted: boolean;
-  questions: TestQuestion[];
-}
+  sentence: string;
+  polishWord: string | null;
+};
 
-interface TestQuestion {
-  id: number;
-  type: 'multiple-choice' | 'cloze' | 'word-formation' | 'key-word' | 'essay' | 'email';
-  instruction: string;
-  passage?: string;
-  question: string;
-  options?: string[];
-  correctAnswer: any;
-  points: number;
-  audioUrl?: string;
-}
+const API_BASE = 'http://localhost:4000';
 
-export default function TestSession({ params }: { params?: { id?: string } }) {
+const formatTime = (seconds: number) => {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+export default function TestSessionPage() {
   const router = useRouter();
-  const [currentSection, setCurrentSection] = useState(0);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [sectionTimeLeft, setSectionTimeLeft] = useState(0);
-  const [isTestStarted, setIsTestStarted] = useState(false);
+
+  const [templates, setTemplates] = useState<TestTemplateDTO[]>([]);
+  const [idx, setIdx] = useState(0);
+
   const [showInstructions, setShowInstructions] = useState(true);
+  const [isStarted, setIsStarted] = useState(false);
 
-  const testId = params?.id ? parseInt(params.id) : 1;
+  const [timeLeft, setTimeLeft] = useState(0);
 
-  // 🔒 PRZYKŁADOWY TEST - Cambridge B2 First
-  const testSections: TestSection[] = [
-    {
-      id: 1,
-      name: 'Reading and Use of English',
-      skill: 'reading',
-      timeLimit: 75,
-      questionsCount: 52,
-      isCompleted: false,
-      questions: [
-        {
-          id: 1,
-          type: 'multiple-choice',
-          instruction: 'For questions 1-8, read the text below and decide which answer (A, B, C or D) best fits each gap.',
-          passage: 'The modern world of work has changed dramatically over the past few decades. Many people now work from home, using technology to (1) _____ with colleagues around the world.',
-          question: '1.',
-          options: ['communicate', 'contact', 'connect', 'correspond'],
-          correctAnswer: 0,
-          points: 2
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Writing',
-      skill: 'writing',
-      timeLimit: 80,
-      questionsCount: 2,
-      isCompleted: false,
-      questions: [
-        {
-          id: 1,
-          type: 'essay',
-          instruction: 'You must answer this question. Write your answer in 140-190 words in an appropriate style.',
-          question: 'In your English class you have been talking about social media. Now your English teacher has asked you to write an essay. Write an essay using all the notes and give reasons for your point of view.',
-          points: 20
-        }
-      ]
-    }
-  ];
+  const [userAnswer, setUserAnswer] = useState('');
+  const [lastCorrect, setLastCorrect] = useState<null | boolean>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentSectionData = testSections[currentSection];
-  const currentQuestionData = currentSectionData?.questions[currentQuestion];
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // ⏱️ TIMER
+  // ✅ podsumowanie
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+
+  const categoryId = useMemo(() => {
+    const raw = router.query.id;
+    const n = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN;
+    return Number.isFinite(n) ? n : null;
+  }, [router.query.id]);
+
+  const total = templates.length;
+  const current = idx < total ? templates[idx] : null;
+  const finished = isStarted && total > 0 && idx >= total;
+
+  // Pobieranie pytań z backendu
   useEffect(() => {
-    if (isTestStarted && sectionTimeLeft > 0) {
-      const timer = setInterval(() => {
-        setSectionTimeLeft(prev => {
-          if (prev <= 1) {
-            // Auto-move to next section
-            if (currentSection < testSections.length - 1) {
-              setCurrentSection(currentSection + 1);
-              return testSections[currentSection + 1].timeLimit * 60;
-            } else {
-              // Test finished
-              return 0;
-            }
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!router.isReady) return;
+    if (!categoryId) return;
 
-      return () => clearInterval(timer);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoadError('Brak tokenu. Zaloguj się ponownie.');
+      return;
     }
-  }, [isTestStarted, sectionTimeLeft, currentSection, testSections]);
 
-  // 🚀 START TEST
+    setLoadError(null);
+
+    fetch(`${API_BASE}/api/tests/templates?categoryId=${categoryId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data?.error || 'Nie udało się pobrać pytań.');
+        return data;
+      })
+      .then((data) => {
+        const list: TestTemplateDTO[] = Array.isArray(data?.templates) ? data.templates : [];
+        setTemplates(list);
+        setIdx(0);
+
+        // reset licznika przy nowym teście
+        setCorrectCount(0);
+        setWrongCount(0);
+        setLastCorrect(null);
+        setUserAnswer('');
+      })
+      .catch((e) => setLoadError(String(e?.message || e)));
+  }, [router.isReady, categoryId]);
+
+  // Timer
+  useEffect(() => {
+    if (!isStarted) return;
+    if (timeLeft <= 0) return;
+
+    const t = setInterval(() => setTimeLeft((p) => Math.max(0, p - 1)), 1000);
+    return () => clearInterval(t);
+  }, [isStarted, timeLeft]);
+
   const startTest = () => {
     setShowInstructions(false);
-    setIsTestStarted(true);
-    setSectionTimeLeft(testSections[0].timeLimit * 60);
+    setIsStarted(true);
+
+    // ~25 sekund na pytanie, min 60s
+    const seconds = Math.max(60, templates.length * 25);
+    setTimeLeft(seconds);
+
+    // reset licznika przy starcie (na wypadek cofnięcia się do instrukcji)
+    setCorrectCount(0);
+    setWrongCount(0);
+    setLastCorrect(null);
+    setUserAnswer('');
+    setIdx(0);
   };
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // 📋 TEST INSTRUCTIONS
+  // Ekran instrukcji
   if (showInstructions) {
     return (
       <Layout>
@@ -135,76 +122,57 @@ export default function TestSession({ params }: { params?: { id?: string } }) {
             <div className={styles.instructionsHeader}>
               <h1 className={styles.instructionsTitle}>
                 <span className={styles.instructionsIcon}>📝</span>
-                Cambridge B2 First Mock Exam
+                Test (uzupełnij lukę)
               </h1>
               <p className={styles.instructionsSubtitle}>
-                Oficjalny egzamin próbny FCE
+                Wpisuj brakujące słowo po angielsku — podpowiedź jest po polsku.
               </p>
             </div>
 
             <div className={styles.testOverview}>
               <div className={styles.overviewCard}>
-                <div className={styles.overviewIcon}>⏱️</div>
-                <div className={styles.overviewValue}>3h 30min</div>
-                <div className={styles.overviewLabel}>Całkowity czas</div>
-              </div>
-              <div className={styles.overviewCard}>
-                <div className={styles.overviewIcon}>📑</div>
-                <div className={styles.overviewValue}>{testSections.length}</div>
-                <div className={styles.overviewLabel}>Sekcje</div>
-              </div>
-              <div className={styles.overviewCard}>
                 <div className={styles.overviewIcon}>❓</div>
-                <div className={styles.overviewValue}>
-                  {testSections.reduce((sum, section) => sum + section.questionsCount, 0)}
-                </div>
+                <div className={styles.overviewValue}>{templates.length || '—'}</div>
                 <div className={styles.overviewLabel}>Pytania</div>
               </div>
-            </div>
-
-            <div className={styles.sectionsPreview}>
-              <h3 className={styles.sectionsTitle}>Struktura testu:</h3>
-              <div className={styles.sectionsList}>
-                {testSections.map((section, index) => (
-                  <div key={section.id} className={styles.sectionPreview}>
-                    <div className={styles.sectionNumber}>{index + 1}</div>
-                    <div className={styles.sectionInfo}>
-                      <div className={styles.sectionName}>{section.name}</div>
-                      <div className={styles.sectionDetails}>
-                        {section.questionsCount} pytań • {section.timeLimit} min
-                      </div>
-                    </div>
-                    <div className={styles.sectionSkill}>
-                      {section.skill === 'reading' && '📖'}
-                      {section.skill === 'writing' && '✍️'}
-                      {section.skill === 'listening' && '🎧'}
-                      {section.skill === 'use-of-english' && '📝'}
-                    </div>
-                  </div>
-                ))}
+              <div className={styles.overviewCard}>
+                <div className={styles.overviewIcon}>⏱️</div>
+                <div className={styles.overviewValue}>
+                  {templates.length ? `${Math.max(1, Math.round((templates.length * 25) / 60))} min` : '—'}
+                </div>
+                <div className={styles.overviewLabel}>Czas (szac.)</div>
               </div>
             </div>
 
             <div className={styles.testRules}>
               <h3 className={styles.rulesTitle}>
                 <span className={styles.rulesIcon}>📋</span>
-                Zasady testu:
+                Zasady:
               </h3>
               <ul className={styles.rulesList}>
-                <li>Test składa się z {testSections.length} sekcji z oddzielnymi limitami czasowymi</li>
-                <li>Po zakończeniu sekcji nie można do niej powrócić</li>
-                <li>Wszystkie odpowiedzi są automatycznie zapisywane</li>
-                <li>Timer jest widoczny przez cały czas</li>
-                <li>Można pomijać pytania i wracać do nich w ramach sekcji</li>
+                <li>Odpowiedź wpisujesz ręcznie (nie ma wyboru z listy).</li>
+                <li>Ignorowana jest wielkość liter i interpunkcja.</li>
+                <li>Po wysłaniu odpowiedź zapisuje się w bazie.</li>
               </ul>
             </div>
+
+            {loadError && (
+              <div className={styles.loadingContainer}>
+                <div className={styles.loadingIcon}>⚠️</div>
+                <div className={styles.loadingText}>{loadError}</div>
+              </div>
+            )}
 
             <div className={styles.instructionsActions}>
               <button onClick={() => router.push('/tests')} className={styles.cancelBtn}>
                 <span className={styles.cancelIcon}>←</span>
                 Powrót do testów
               </button>
-              <button onClick={startTest} className={styles.startTestBtn}>
+              <button
+                onClick={startTest}
+                className={styles.startTestBtn}
+                disabled={templates.length === 0 || Boolean(loadError)}
+              >
                 <span className={styles.startIcon}>🚀</span>
                 Rozpocznij test
               </button>
@@ -215,7 +183,21 @@ export default function TestSession({ params }: { params?: { id?: string } }) {
     );
   }
 
-  if (!currentSectionData || !currentQuestionData) {
+  // Loading
+  if (loadError) {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.loadingContainer}>
+            <div className={styles.loadingIcon}>⚠️</div>
+            <div className={styles.loadingText}>{loadError}</div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isStarted || templates.length === 0) {
     return (
       <Layout>
         <div className={styles.page}>
@@ -228,112 +210,165 @@ export default function TestSession({ params }: { params?: { id?: string } }) {
     );
   }
 
+  // Koniec czasu
+  if (timeLeft === 0 && !finished) {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.instructionsContainer}>
+            <div className={styles.instructionsHeader}>
+              <h1 className={styles.instructionsTitle}>
+                <span className={styles.instructionsIcon}>⏱️</span>
+                Koniec czasu
+              </h1>
+              <p className={styles.instructionsSubtitle}>
+                Poprawne: {correctCount} • Błędne: {wrongCount}
+              </p>
+            </div>
+
+            <div className={styles.instructionsActions}>
+              <button onClick={() => router.push('/tests')} className={styles.startTestBtn}>
+                Wróć do testów
+              </button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Koniec testu
+  if (finished) {
+    return (
+      <Layout>
+        <div className={styles.page}>
+          <div className={styles.instructionsContainer}>
+            <div className={styles.instructionsHeader}>
+              <h1 className={styles.instructionsTitle}>
+                <span className={styles.instructionsIcon}>✅</span>
+                Test ukończony
+              </h1>
+              <p className={styles.instructionsSubtitle}>
+                Poprawne: {correctCount} • Błędne: {wrongCount}
+              </p>
+            </div>
+
+            <div className={styles.instructionsActions}>
+              <button onClick={() => router.push('/tests')} className={styles.startTestBtn}>
+                Wróć do testów
+              </button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Widok główny testu
   return (
     <Layout>
       <div className={styles.page}>
         <div className={styles.testContainer}>
-          
-          {/* 🎯 TEST HEADER */}
           <div className={styles.testHeader}>
             <div className={styles.testInfo}>
               <h1 className={styles.testTitle}>
                 <span className={styles.testIcon}>📝</span>
-                {currentSectionData.name}
+                Test
               </h1>
               <div className={styles.sectionProgress}>
-                Sekcja {currentSection + 1} z {testSections.length} • 
-                Pytanie {currentQuestion + 1} z {currentSectionData.questionsCount}
+                Pytanie {idx + 1} z {total} • Poprawne: {correctCount} • Błędne: {wrongCount}
               </div>
             </div>
 
             <div className={styles.testControls}>
-              <div className={`${styles.sectionTimer} ${sectionTimeLeft < 300 ? styles.warning : ''}`}>
+              <div className={`${styles.sectionTimer} ${timeLeft < 30 ? styles.warning : ''}`}>
                 <span className={styles.timerIcon}>⏱️</span>
-                {formatTime(sectionTimeLeft)}
+                {formatTime(timeLeft)}
               </div>
             </div>
           </div>
 
-          {/* ❓ TEST QUESTION */}
           <div className={styles.testQuestion}>
             <div className={styles.questionHeader}>
-              <div className={styles.questionType}>
-                {currentQuestionData.type === 'multiple-choice' && '🎯 Multiple Choice'}
-                {currentQuestionData.type === 'cloze' && '✏️ Cloze Test'}
-                {currentQuestionData.type === 'word-formation' && '🔤 Word Formation'}
-                {currentQuestionData.type === 'essay' && '📝 Essay'}
-              </div>
-              <div className={styles.questionPoints}>
-                {currentQuestionData.points} {currentQuestionData.points === 1 ? 'punkt' : 'punkty'}
-              </div>
+              <div className={styles.questionType}>✏️ Uzupełnij lukę</div>
+              <div className={styles.questionPoints}>1 punkt</div>
             </div>
 
-            {currentQuestionData.instruction && (
-              <div className={styles.questionInstruction}>
-                {currentQuestionData.instruction}
-              </div>
-            )}
-
-            {currentQuestionData.passage && (
-              <div className={styles.questionPassage}>
-                {currentQuestionData.passage}
-              </div>
-            )}
+            <div className={styles.questionInstruction}>
+              Podpowiedź (PL): <strong>{current?.polishWord ?? '—'}</strong>
+            </div>
 
             <div className={styles.questionContent}>
-              <h2 className={styles.questionText}>
-                {currentQuestionData.question}
-              </h2>
+              <h2 className={styles.questionText}>{current?.sentence}</h2>
             </div>
 
-            {/* ANSWER INTERFACE - jak w poprzednich komponentach */}
             <div className={styles.answerInterface}>
-              {/* Implementation similar to QuizSession */}
-            </div>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!current || isSubmitting) return;
 
-            {/* 🎮 NAVIGATION */}
-            <div className={styles.questionNavigation}>
-              <button 
-                onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
-                disabled={currentQuestion === 0}
-                className={styles.prevBtn}
-              >
-                <span className={styles.prevIcon}>←</span>
-                Poprzednie
-              </button>
+                  const token = localStorage.getItem('token');
+                  if (!token) {
+                    setLoadError('Brak tokenu. Zaloguj się ponownie.');
+                    return;
+                  }
 
-              <div className={styles.questionNumbers}>
-                {currentSectionData.questions.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentQuestion(index)}
-                    className={`${styles.questionNumber} 
-                      ${index === currentQuestion ? styles.current : ''} 
-                      ${answers[`${currentSection}-${index}`] ? styles.answered : ''}
-                    `}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
+                  setIsSubmitting(true);
+                  try {
+                    const resp = await fetch(`${API_BASE}/api/tests/submit`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        testTemplateId: current.id,
+                        userAnswer,
+                      }),
+                    });
 
-              <button 
-                onClick={() => {
-                  if (currentQuestion < currentSectionData.questionsCount - 1) {
-                    setCurrentQuestion(currentQuestion + 1);
-                  } else if (currentSection < testSections.length - 1) {
-                    setCurrentSection(currentSection + 1);
-                    setCurrentQuestion(0);
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok) throw new Error(data?.error || 'Nie udało się zapisać odpowiedzi.');
+
+                    const ok = Boolean(data?.isCorrect);
+                    setLastCorrect(ok);
+
+                    if (ok) setCorrectCount((p) => p + 1);
+                    else setWrongCount((p) => p + 1);
+
+                    setTimeout(() => {
+                      setLastCorrect(null);
+                      setUserAnswer('');
+                      setIdx((p) => p + 1);
+                    }, 1500);
+                  } catch (err: any) {
+                    setLoadError(String(err?.message || err));
+                  } finally {
+                    setIsSubmitting(false);
                   }
                 }}
-                className={styles.nextBtn}
               >
-                <span className={styles.nextIcon}>→</span>
-                {currentQuestion < currentSectionData.questionsCount - 1 ? 'Następne' : 'Następna sekcja'}
-              </button>
+                <input
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  className={styles.searchInput}
+                  placeholder="Wpisz odpowiedź po angielsku..."
+                  autoFocus
+                />
+                <button type="submit" className={styles.nextBtn} disabled={isSubmitting || !userAnswer.trim()}>
+                  <span className={styles.nextIcon}>→</span>
+                  Sprawdź
+                </button>
+              </form>
+
+              {lastCorrect !== null && (
+                <div className={lastCorrect ? styles.correct : styles.wrong}>
+                  {lastCorrect ? '✅ Poprawna odpowiedź' : '❌ Błędna odpowiedź'}
+                </div>
+              )}
             </div>
           </div>
-
         </div>
       </div>
     </Layout>
