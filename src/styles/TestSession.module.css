@@ -206,7 +206,7 @@
 
 .startTestBtn {
   background: linear-gradient(135deg, var(--secondary-green) 0%, var(--secondary-emerald) 100%);
-  color: white;
+  /* color: white; */
   box-shadow: var(--shadow-lg);
 }
 
@@ -438,6 +438,61 @@
   font-size: 1.5rem;
   font-weight: 600;
 }
+
+/* ✅ INPUT + FEEDBACK (nowe dla wpisywania odpowiedzi) */
+
+.searchInput {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--neutral-200);
+  background: white;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--neutral-900);
+  outline: none;
+  transition: var(--transition-fast);
+  margin-bottom: 1rem;
+}
+
+.searchInput:focus {
+  border-color: var(--primary-indigo);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.searchInput::placeholder {
+  color: var(--neutral-500);
+  font-weight: 500;
+}
+
+/* feedback po sprawdzeniu */
+.correct,
+.wrong {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  font-weight: 700;
+}
+
+.correct {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #065f46;
+}
+
+.wrong {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #7f1d1d;
+}
+
+/* w answerInterface lepiej wygląda gdy button jest pod inputem */
+.answerInterface form {
+  display: grid;
+  gap: 0.75rem;
+}
+
 
 /* 📱 RESPONSIVE */
 @media (max-width: 768px) {
