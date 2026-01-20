@@ -1,53 +1,61 @@
-// src/pages/profile.tsx
+// src/pages/profile.tsx - UPROSZCZONE (BEZ LICZENIA ZADAŃ)
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import ProfileHeader from '../components/ProfileHeader';
 import ProfileStats from '../components/ProfileStats';
-import UserCourses from '../components/UserCourses';
-import ActivityFeed from '../components/ActivityFeed';
-import { apiRequest } from '../lib/api';
+import { 
+  getCurrentUser,
+  UserProfile
+} from '../lib/api';
 
 export default function ProfilePage() {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<any>(null);
+  
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState(false); // Prosta flaga błędu
+  const [authError, setAuthError] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        setAuthError(true);
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
+        
+        // 1. SPRAWDZENIE TOKENA
+        const token = localStorage.getItem('token');
+        console.log('📋 Token z localStorage:', token ? '✅ Istnieje' : '❌ BRAK!');
+        
+        if (!token) {
+          console.error('❌ BRAK TOKENA!');
+          setAuthError(true);
+          setLoading(false);
+          return;
+        }
 
-        // Pobieramy dane użytkownika
-        const userData = await apiRequest<any>('/auth/me', 'GET', undefined, token);
+        // 2. POBIERANIE DANYCH UŻYTKOWNIKA
+        console.log('🔄 Pobieranie getCurrentUser z /auth/me...');
+        const userData = await getCurrentUser(token);
+        console.log('✅ Dane użytkownika pobrane:', userData);
         setUser(userData);
 
-        // Ustawiamy statystyki (z bezpiecznymi wartościami domyślnymi)
+        // 3. USTAWIENIE STATYSTYK - Z BAZY DANYCH
         setStats({
           totalPoints: userData.points || 0,
-          currentStreak: userData.streak_days || 1,
-          longestStreak: userData.streak_days || 1,
+          currentStreak: userData.streak_days || 0,
+          longestStreak: userData.streak_days || 0,
           todayLessons: userData.today_lessons || 0,
-          dailyGoal: 5,
-          totalHours: 0, // Placeholder
-          activeCourses: [] // Placeholder
+          dailyGoal: userData.target_lessons || 5,
         });
 
+        console.log('✅ PROFIL ZAŁADOWANY POMYŚLNIE!');
+
       } catch (err) {
-        console.error("Błąd pobierania profilu:", err);
-        // Jeśli błąd sugeruje brak autoryzacji, pokazujemy ekran logowania
+        console.error("❌ BŁĄD:", err);
+        const errorMsg = err instanceof Error ? err.message : 'Nieznany błąd';
+        console.error('📌 Wiadomość błędu:', errorMsg);
         setAuthError(true);
       } finally {
         setLoading(false);
@@ -68,7 +76,7 @@ export default function ProfilePage() {
     );
   }
 
-  // --- EKRAN BRAKU AUTORYZACJI (Zamiast brzydkiego błędu) ---
+  // --- EKRAN BŁĘDU ---
   if (authError || !user) {
     return (
       <Layout>
@@ -111,78 +119,49 @@ export default function ProfilePage() {
     <Layout>
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
         
+        {/* HEADER */}
         <ProfileHeader
           user={{
             id: user.id,
             username: user.username,
-            displayName: user.username,
+            displayName: user.displayName || user.username,
             email: user.email,
             avatar: user.avatar || '👤',
-            bio: 'Użytkownik LangLearn',
             level: user.level || 'A1',
             joinedDate: user.createdAt || new Date().toISOString(),
             lastActive: new Date().toISOString(),
           }}
         />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
-          
-          {/* LEWA KOLUMNA */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {stats && (
-              <ProfileStats
-                totalPoints={stats.totalPoints}
-                currentStreak={stats.currentStreak}
-                longestStreak={stats.longestStreak}
-                todayLessons={stats.todayLessons}
-                dailyGoal={stats.dailyGoal}
-                totalHours={stats.totalHours}
-                activeCourses={stats.activeCourses || 0}
-              />
-            )}
-             
-             {/* Placeholder Kursów */}
-             <div style={{ 
-                padding: '30px', 
-                background: '#fff', 
-                borderRadius: '16px', 
-                border: '1px solid #f3f4f6',
-                textAlign: 'center'
-             }}>
-                <div style={{ fontSize: '32px', marginBottom: '10px' }}>📚</div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Twoje Kursy</h3>
-                <p style={{ color: '#9ca3af', margin: 0 }}>Nie zapisałeś się jeszcze na żaden kurs.</p>
-                <button 
-                  onClick={() => router.push('/study')}
-                  style={{
-                    marginTop: '15px',
-                    color: '#4f46e5',
-                    background: 'none',
-                    border: 'none',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Przeglądaj katalog →
-                </button>
-             </div>
+        {/* BIO UŻYTKOWNIKA */}
+        {user.bio && (
+          <div style={{ 
+             padding: '20px', 
+             background: '#fff', 
+             borderRadius: '16px', 
+             border: '1px solid #f3f4f6',
+             marginTop: '24px'
+          }}>
+             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600' }}>📝 O mnie</h3>
+             <p style={{ margin: 0, color: '#4b5563', lineHeight: '1.6' }}>
+               {user.bio}
+             </p>
           </div>
+        )}
 
-          {/* PRAWA KOLUMNA */}
-          <div>
-             <div style={{ 
-                padding: '30px', 
-                background: '#fff', 
-                borderRadius: '16px', 
-                border: '1px solid #f3f4f6',
-                textAlign: 'center'
-             }}>
-                <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚡</div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Ostatnia aktywność</h3>
-                <p style={{ color: '#9ca3af', margin: 0 }}>Tutaj pojawi się historia Twojej nauki.</p>
-             </div>
+        {/* STATYSTYKI */}
+        {stats && (
+          <div style={{ marginTop: '24px' }}>
+            <ProfileStats
+              totalPoints={stats.totalPoints}
+              currentStreak={stats.currentStreak}
+              longestStreak={stats.longestStreak}
+              todayLessons={stats.todayLessons}
+              dailyGoal={stats.dailyGoal}
+              totalHours={stats.totalHours}
+            />
           </div>
-        </div>
+        )}
       </div>
     </Layout>
   );

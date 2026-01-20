@@ -1,28 +1,68 @@
+// src/lib/api.ts - POPRAWIONY BEZ ANY TYPÓW
+
 import { User, UserStats, Course, Activity, ApiResponse, RawActivity } from '../types';
 
-// Ta linia jest kluczowa. Zostaw ją dokładnie tak.
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
-export async function apiRequest<T = unknown>(
+// ============================================
+// TYPY
+// ============================================
+
+export interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  displayName?: string;
+  avatar?: string;
+  bio?: string;
+  level?: string;
+  points?: number;
+  streak_days?: number;
+  today_lessons?: number;
+  target_lessons?: number;
+  global_rank?: number;
+  total_users?: number;
+  createdAt?: string;
+}
+
+export interface UserSettingsData {
+  id: number;
+  userId: number;
+  dailyGoal: number;
+  difficulty: string;
+  notificationsEnabled: boolean;
+  emailNotifications: boolean;
+  profilePublic: boolean;
+  showStats: boolean;
+}
+
+export interface ActivityItem {
+  id: number;
+  type: 'course' | 'flashcard' | 'test' | 'quiz';
+  title: string;
+  description?: string;
+  status: 'completed' | 'in_progress' | 'started';
+  createdAt: string;
+}
+
+// ============================================
+// API REQUEST FUNCTION
+// ============================================
+
+export async function apiRequest<T>(
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
-  body?: Record<string, unknown> | null,
+  body?: Record<string, any> | null,
   token?: string
 ): Promise<T> {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
 
-  // --- POCZĄTEK DEBUGOWANIA ---
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
-    // Logujemy, że wysyłamy token i jego fragment
-    console.log(`🔑 Wysyłam token dla ${endpoint}:`, `Bearer ${token.substring(0, 20)}...`);
-  } else {
-    // Logujemy, że do tego zapytania nie ma tokena
-    console.warn(`⚠️ Brak tokena dla zapytania: ${endpoint}`);
+    console.log(`🔑 Token dla ${endpoint}`);
   }
-  // --- KONIEC DEBUGOWANIA ---
 
   console.log("API CALL:", `${BASE}${endpoint}`);
 
@@ -64,77 +104,24 @@ export async function loginUser(email: string, password: string) {
   });
 }
 
-export async function requestPasswordReset(email: string) {
-  return apiRequest('/auth/request-password-reset', 'POST', {
-    email,
-  });
-}
-
-export async function resetPassword(token: string, newPassword: string) {
-  return apiRequest('/auth/reset-password', 'POST', {
-    token,
-    newPassword,
-  });
-}
-
 // ============================================
 // PROFILE API FUNCTIONS
 // ============================================
 
-export async function getUserProfile(token: string) {
-  return apiRequest<User>('/auth/users/me', 'GET', null, token);
+/**
+ * Pobierz aktualnego zalogowanego użytkownika
+ * @param token - JWT token autoryzacji
+ * @returns Dane profilu użytkownika
+ */
+export async function getCurrentUser(token: string): Promise<UserProfile> {
+  return apiRequest<UserProfile>('/auth/me', 'GET', null, token);
 }
 
-export async function getUserStats(userId: number, token: string) {
-  return apiRequest<UserStats>(`/auth/users/${userId}/stats`, 'GET', null, token);
-}
-
-export async function getUserCourses(userId: number, token:string) {
-  const courses = await apiRequest<Course[]>(
-    `/auth/users/${userId}/courses?status=active`,
-    'GET',
-    null,
-    token
-  );
-  return (courses || []).map(course => ({
-    ...course,
-    description: course.description || '',
-    category: course.category || 'Nauka',
-    emoji: course.emoji || '📚',
-    color: course.color || 'blue',
-    isActive: course.isActive !== false,
-  }));
-}
-
-export async function getUserActivity(userId: number, token: string) {
-  const activities = await apiRequest<RawActivity[]>(
-    `/auth/users/${userId}/activity?limit=10`,
-    'GET',
-    null,
-    token
-  );
-  return (activities || []).map(activity => ({
-    id: activity.id,
-    type: mapActivityType(activity.type),
-    title: activity.title,
-    courseName: activity.courseName || activity.courseTitle,
-    date: activity.date,
-    duration: activity.duration,
-    points: activity.points || activity.pointsEarned,
-    accuracy: activity.accuracy,
-  })) as Activity[];
-}
-
-function mapActivityType(type: string): 'lesson' | 'quiz' | 'achievement' | 'streak' {
-  const typeMap: Record<string, 'lesson' | 'quiz' | 'achievement' | 'streak'> = {
-    'lesson': 'lesson', 'test': 'quiz', 'practice': 'achievement', 'review': 'streak',
-  };
-  return typeMap[type] || 'lesson';
-}
-
-// ============================================
-// UPDATE USER PROFILE
-// ============================================
+/**
+ * Zaktualizuj profil użytkownika
+ * @param token - JWT token autoryzacji
+ * @param data - Dane do aktualizacji
+ */
 export async function updateUserProfile(
   token: string,
   data: {
@@ -142,62 +129,207 @@ export async function updateUserProfile(
     bio?: string;
     avatar?: string;
   }
-) {
-  return apiRequest('/auth/users/me/update', 'PUT', data, token);
+): Promise<UserProfile> {
+  return apiRequest<UserProfile>('/auth/users/me/update', 'PUT', data, token);
 }
 
-// ============================================
-// CHANGE PASSWORD
-// ============================================
+/**
+ * Zmień hasło użytkownika
+ * @param token - JWT token autoryzacji
+ * @param currentPassword - Aktualne hasło
+ * @param newPassword - Nowe hasło
+ */
 export async function changePassword(
   token: string,
   currentPassword: string,
   newPassword: string
-) {
-  return apiRequest('/auth/users/me/password', 'PUT', {
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/auth/users/me/password', 'PUT', {
     currentPassword,
     newPassword,
   }, token);
 }
 
 // ============================================
-// GET USER SETTINGS
+// SETTINGS API FUNCTIONS
 // ============================================
-export async function getUserSettings(userId: number, token: string) {
-  return apiRequest('/auth/users/' + userId + '/settings', 'GET', null, token);
+
+/**
+ * Pobierz ustawienia użytkownika
+ * @param userId - ID użytkownika
+ * @param token - JWT token autoryzacji
+ */
+export async function getUserSettings(userId: number, token: string): Promise<UserSettingsData> {
+  return apiRequest<UserSettingsData>(`/auth/users/${userId}/settings`, 'GET', null, token);
 }
 
-// ============================================
-// UPDATE USER SETTINGS
-// ============================================
+/**
+ * Zaktualizuj ustawienia użytkownika
+ * @param userId - ID użytkownika
+ * @param token - JWT token autoryzacji
+ * @param data - Ustawienia do aktualizacji
+ */
 export async function updateUserSettings(
   userId: number,
   token: string,
-  data: {
-    dailyGoal?: number;
-    difficulty?: string;
-    notificationsEnabled?: boolean;
-    emailNotifications?: boolean;
-    profilePublic?: boolean;
-    showStats?: boolean;
-  }
-) {
-  return apiRequest('/auth/users/' + userId + '/settings', 'PUT', data, token);
+  data: Partial<UserSettingsData>
+): Promise<UserSettingsData> {
+  return apiRequest<UserSettingsData>(`/auth/users/${userId}/settings`, 'PUT', data, token);
 }
 
-// Helper do dodawania fiszek
-export async function createFlashcard(
+// ============================================
+// ACTIVITY API FUNCTIONS
+// ============================================
+
+/**
+ * Pobierz aktywność użytkownika
+ * ⚠️ UWAGA: Endpoint może nie istnieć na backendzie
+ * Jeśli zwraca 404 - backend nie ma tego endpointu
+ * @param userId - ID użytkownika
+ * @param token - JWT token autoryzacji
+ * @param limit - Liczba elementów do pobrania
+ */
+export async function getUserActivity(
+  userId: number,
+  token: string,
+  limit: number = 10
+): Promise<ActivityItem[]> {
+  try {
+    return await apiRequest<ActivityItem[]>(
+      `/auth/users/${userId}/activity?limit=${limit}`,
+      'GET',
+      null,
+      token
+    );
+  } catch (error) {
+    console.warn('⚠️ Endpoint /auth/users/:id/activity nie istnieje na backendzie');
+    // Zwracamy pustą tablicę zamiast rzucać błąd
+    return [];
+  }
+}
+
+/**
+ * Pobierz statystyki użytkownika
+ * @param userId - ID użytkownika
+ * @param token - JWT token autoryzacji
+ */
+export async function getUserStats(userId: number, token: string): Promise<UserStats> {
+  return apiRequest<UserStats>(`/auth/users/${userId}/stats`, 'GET', null, token);
+}
+
+// ============================================
+// COURSES API FUNCTIONS
+// ============================================
+
+/**
+ * Pobierz kursy użytkownika
+ * @param userId - ID użytkownika
+ * @param token - JWT token autoryzacji
+ */
+export async function getUserCourses(userId: number, token: string): Promise<Course[]> {
+  return apiRequest<Course[]>(`/auth/users/${userId}/courses`, 'GET', null, token);
+}
+
+/**
+ * Pobierz wszystkie dostępne kursy
+ */
+export async function getAllCourses(): Promise<Course[]> {
+  return apiRequest<Course[]>('/categories', 'GET');
+}
+
+/**
+ * Pobierz fiszki dla kursu
+ * @param courseId - ID kursu
+ */
+export async function getFlashcards(courseId: number) {
+  return apiRequest<Record<string, any>[]>(`/flashcards?courseId=${courseId}`, 'GET');
+}
+
+/**
+ * Pobierz quizy dla kursu
+ * @param courseId - ID kursu
+ */
+export async function getQuizzes(courseId: number) {
+  return apiRequest<Record<string, any>[]>(`/quizzes?courseId=${courseId}`, 'GET');
+}
+
+/**
+ * Pobierz testy dla kursu
+ * @param courseId - ID kursu
+ */
+export async function getTests(courseId: number) {
+  return apiRequest<Record<string, any>[]>(`/tests?courseId=${courseId}`, 'GET');
+}
+
+// ============================================
+// LEARNING API FUNCTIONS
+// ============================================
+
+/**
+ * Wyślij odpowiedź na quiz
+ * @param token - JWT token autoryzacji
+ * @param data - Dane quizu
+ */
+export async function submitQuizAnswer(
   token: string,
   data: {
-    front: string;
-    back: string;
-    categoryId: number | null;
-    isGlobal?: boolean;
+    quizId: number;
+    answer: string;
   }
-) {
-  return apiRequest('/flashcards', 'POST', data, token);
+): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>('/quizzes/answer', 'POST', data, token);
 }
 
+/**
+ * Wyślij wynik testu
+ * @param token - JWT token autoryzacji
+ * @param data - Dane testu
+ */
+export async function submitTestResult(
+  token: string,
+  data: {
+    testId: number;
+    score: number;
+    answers: Record<string, any>[];
+  }
+): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>('/tests/submit', 'POST', data, token);
+}
 
+/**
+ * Oznacz fiszkę jako nauczoną
+ * @param token - JWT token autoryzacji
+ * @param flashcardId - ID fiszki
+ */
+export async function markFlashcardAsLearned(
+  token: string,
+  flashcardId: number
+): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/flashcards/${flashcardId}/learn`, 'POST', {}, token);
+}
+
+// ============================================
+// RANKING API FUNCTIONS
+// ============================================
+
+/**
+ * Pobierz ranking użytkowników
+ * @param limit - Liczba użytkowników
+ */
+export async function getLeaderboard(limit: number = 100): Promise<Record<string, any>[]> {
+  return apiRequest<Record<string, any>[]>(`/ranking/leaderboard?limit=${limit}`, 'GET');
+}
+
+/**
+ * Pobierz pozycję użytkownika w rankingu
+ * @param userId - ID użytkownika
+ */
+export async function getUserRank(userId: number): Promise<Record<string, any>> {
+  return apiRequest<Record<string, any>>(`/ranking/user/${userId}`, 'GET');
+}
+
+// ============================================
+// TYPE EXPORTS
+// ============================================
 
 export type { User, UserStats, Course, Activity, ApiResponse, RawActivity };

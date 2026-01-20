@@ -14,7 +14,6 @@ interface StudyMode {
   href: string;
   badge?: string;
   count: number;
-  progress: number;
 }
 
 export default function StudyHub() {
@@ -28,8 +27,7 @@ export default function StudyHub() {
       color: 'var(--primary-indigo)',
       href: '/flashcards',
       badge: 'Popularne',
-      count: 120,
-      progress: 67
+      count: 120
     },
     {
       id: 2,
@@ -39,8 +37,7 @@ export default function StudyHub() {
       color: 'var(--secondary-green)',
       href: '/grammar',
       badge: 'Nowe',
-      count: 85,
-      progress: 34
+      count: 85
     },
     {
       id: 3,
@@ -49,8 +46,7 @@ export default function StudyHub() {
       icon: '❓',
       color: 'var(--primary-cyan)',
       href: '/quiz',
-      count: 500,
-      progress: 42
+      count: 500
     }
   ];
 
@@ -112,25 +108,6 @@ export default function StudyHub() {
                     <h2 className={styles.modeTitle}>{mode.title}</h2>
                     <p className={styles.modeDescription}>{mode.description}</p>
                   </div>
-
-                  {/* 📈 MODE PROGRESS */}
-                  {mode.progress > 0 && (
-                    <div className={styles.modeProgress}>
-                      <div className={styles.progressHeader}>
-                        <span className={styles.progressLabel}>Twój postęp</span>
-                        <span className={styles.progressPercent}>{mode.progress}%</span>
-                      </div>
-                      <div className={styles.progressBar}>
-                        <div
-                          className={styles.progressFill}
-                          style={{
-                            width: `${mode.progress}%`,
-                            backgroundColor: mode.color,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {/* 🎮 MODE ACTION */}
                   <div

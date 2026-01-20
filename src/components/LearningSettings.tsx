@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import styles from '../styles/SettingsForm.module.css';
-import { updateUserSettings } from '../lib/api';
+import { updateUserSettings, getUserSettings } from '../lib/api';
 
 interface UserSettings {
   id: number;
@@ -25,21 +25,49 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   // Formy
   const [dailyGoal, setDailyGoal] = useState(15);
   const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
 
-  // Załaduj ustawienia
+  // Załaduj ustawienia z API
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoadingSettings(true);
+        const token = localStorage.getItem('token');
+        if (!token || !userId) {
+          console.warn('❌ Brak tokena lub userId');
+          setLoadingSettings(false);
+          return;
+        }
+
+        const data = await getUserSettings(userId, token);
+        console.log('✅ Załadowane ustawienia:', data);
+        
+        setDailyGoal(data.dailyGoal || 15);
+        setDifficulty((data.difficulty as 'Easy' | 'Medium' | 'Hard') || 'Medium');
+      } catch (err) {
+        console.error('❌ Błąd ładowania ustawień:', err);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    loadSettings();
+  }, [userId]);
+
+  // Załaduj gdy props settings się zmieni
   useEffect(() => {
     if (settings) {
+      console.log('📊 Prop settings zmienił się:', settings);
       setDailyGoal(settings.dailyGoal || 15);
       setDifficulty((settings.difficulty as 'Easy' | 'Medium' | 'Hard') || 'Medium');
     }
   }, [settings]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -70,6 +98,20 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
     }
   };
 
+  if (loadingSettings) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h2>Ustawienia Nauki</h2>
+          <p>Ładowanie ustawień...</p>
+        </div>
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p>⏳ Pobieranie danych...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -77,7 +119,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
         <p>Dostosuj swoje cele i preferencje nauki</p>
       </div>
 
-      <form onSubmit={handleSubmit} className={styles.form}>
+      <div className={styles.form}>
         
         {/* Cel dzienny */}
         <div className={styles.formGroup}>
@@ -212,14 +254,15 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
         {/* Przycisk Submit */}
         <div className={styles.buttonGroup}>
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={loading}
             className={styles.submitBtn}
           >
             {loading ? '⏳ Zapisywanie...' : '💾 Zapisz ustawienia'}
           </button>
         </div>
-      </form>
+      </div>
 
       {/* Rekomendacje */}
       <div 
