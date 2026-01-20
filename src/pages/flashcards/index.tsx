@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Layout from '@/components/Layout';
 import styles from '@/styles/FlashcardsBrowser.module.css';
 import { apiRequest } from '@/lib/api';
+import { useRouter } from 'next/router';
 
 interface Category {
   id: number;
@@ -38,6 +39,7 @@ interface FlashcardDeck {
 }
 
 export default function FlashcardsBrowser() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
@@ -50,20 +52,34 @@ export default function FlashcardsBrowser() {
 
   // 🔄 Wczytaj kategorie z backendu
   useEffect(() => {
-    const loadCategories = async () => {
+    const fetchCategories = async () => {
       try {
-        const data = await apiRequest<Category[]>('/categories', 'GET');
+        setLoading(true);
+        
+        // 1. 👇 Pobieramy token z przeglądarki
+        const token = localStorage.getItem('token');
+        
+        // Jeśli nie ma tokenu, to po prostu przerywamy (nie wyświetlamy brzydkiego błędu)
+        if (!token) {
+           console.log("Użytkownik niezalogowany");
+           setLoading(false);
+           return;
+        }
+
+        // 2. 👇 Przekazujemy token do funkcji apiRequest (to ta kluczowa zmiana)
+        // apiRequest(url, metoda, body, token)
+        const data = await apiRequest<Category[]>('/categories', 'GET', undefined, token);
+        
         setCategories(data);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (e: any) {
-        setError(e.message ?? 'Błąd ładowania kategorii');
+      } catch (err: any) {
+        console.error("Błąd pobierania kategorii:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadCategories();
-  }, []);
+    fetchCategories();
+  }, [router]);
 
   // 🔄 Wczytaj statystyki kart i użytkowników dla każdej kategorii
   useEffect(() => {

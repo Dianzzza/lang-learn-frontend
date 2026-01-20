@@ -270,7 +270,7 @@ export default function FlashcardStudy() {
         avgResponseTime:
           (prev.avgResponseTime + responseTime) / 2,
         points:
-          prev.points + (status === 'learned' ? 10 : 5),
+          prev.points + (status === 'learned' ? 10 : 0),
       }));
 
       let remainingCards = studyCards.filter(

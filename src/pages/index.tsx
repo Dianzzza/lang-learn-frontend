@@ -1,15 +1,23 @@
-// src/pages/index.tsx
+// frontend/src/pages/index.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import LessonsList from '../components/LessonsList';
 import WelcomeSection from '../components/WelcomeSection';
 import UserStats from '../components/UserStats';
 import styles from '../styles/Home.module.css';
+import { apiRequest } from '../lib/api';
 
-type LessonStatus = 'in_progress' | 'completed' | 'locked';
+// Zaktualizowany interfejs kategorii
+interface CategoryWithProgress {
+  id: number;
+  name: string;
+  progress: number; // Teraz backend to zwraca!
+  totalCards: number;
+}
 
-interface User {
+interface UserDashboardData {
   username: string;
   points: number;
   global_rank: number;
@@ -17,15 +25,7 @@ interface User {
   streak_days: number;
   today_lessons: number;
   target_lessons: number;
-  weekly_hours: number;
-}
-
-interface Lesson {
-  id: string;
-  title: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-  progress: number;
-  status: LessonStatus;
+  level: number;
 }
 
 interface Stat {
@@ -37,84 +37,76 @@ interface Stat {
 }
 
 export default function Home() {
-  // Przykładowe dane użytkownika
-  const user: User = {
-    username: 'Anna',
-    points: 2847,
-    global_rank: 156,
-    total_users: 12543,
-    streak_days: 7,
-    today_lessons: 2,
-    target_lessons: 5,
-    weekly_hours: 4.5
-  };
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<UserDashboardData | null>(null);
+  const [lessons, setLessons] = useState<any[]>([]);
 
-  // Przykładowe lekcje
-  const lessons: Lesson[] = [
-    {
-      id: '1',
-      title: 'Podstawy - Powitania',
-      level: 'A1',
-      progress: 85,
-      status: 'in_progress'
-    },
-    {
-      id: '2',
-      title: 'Częste zwroty',
-      level: 'A1',
-      progress: 100,
-      status: 'completed'
-    },
-    {
-      id: '3',
-      title: 'Czas przeszły',
-      level: 'A2',
-      progress: 23,
-      status: 'in_progress'
-    },
-    {
-      id: '4',
-      title: 'Czasowniki nieregularne',
-      level: 'A2',
-      progress: 0,
-      status: 'locked'
-    },
-    {
-      id: '5',
-      title: 'Conditional sentences',
-      level: 'B1',
-      progress: 0,
-      status: 'locked'
-    }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
 
-  // Przykładowe statystyki
+        // 1. Pobieramy usera
+        const userResponse = await apiRequest<UserDashboardData>('/auth/me', 'GET', null, token);
+        setUserData(userResponse);
+
+        // 2. Pobieramy kategorie z NOWYM POLICZONYM POSTĘPEM
+        // Ważne: teraz przekazujemy token, bo backend tego wymaga do liczenia
+        const categoriesResponse = await apiRequest<CategoryWithProgress[]>('/categories', 'GET', null, token);
+        
+        const formattedLessons = categoriesResponse.map(cat => ({
+          id: cat.id,
+          title: cat.name,
+          level: 'A1', // Możemy to kiedyś brać z bazy
+          progress: cat.progress, // <-- TUTAJ WPADANĄ PRAWDZIWE PROCENTY (np. 85%)
+          status: cat.progress === 100 ? 'completed' : 'inprogress'
+        }));
+        
+        setLessons(formattedLessons);
+
+      } catch (error) {
+        console.error("Błąd dashboardu:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const stats: Stat[] = [
     {
-      title: 'Twoje punkty',
-      value: '2,847',
-      change: '+124',
+      title: 'Twój Poziom',
+      value: `Lvl ${userData?.level || 1}`,
+      subtitle: 'Początkujący',
       icon: '⭐'
     },
     {
-      title: 'Pozycja w rankingu',
-      value: '#156',
-      subtitle: 'z 12,543 użytkowników',
+      title: 'Punkty Razem',
+      value: `${userData?.points || 0}`,
+      subtitle: 'pkt',
       icon: '🏆'
     },
     {
-      title: 'Seria dni',
-      value: '7 dni',
-      subtitle: 'z rzędu',
+      title: 'Dni z rzędu',
+      value: `${userData?.streak_days || 0} dzień`,
+      subtitle: 'świetnie Ci idzie!',
       icon: '🔥'
     },
     {
-      title: 'Dzisiejszy postęp',
-      value: '2/5',
-      subtitle: 'ukończonych lekcji',
+      title: 'Dzisiejszy cel',
+      value: `${userData?.today_lessons || 0}/${userData?.target_lessons || 5}`,
+      subtitle: 'ukończonych aktywności',
       icon: '🎯'
     }
   ];
+
+  if (loading) return <Layout><div>Ładowanie...</div></Layout>;
 
   return (
     <Layout>
@@ -122,28 +114,21 @@ export default function Home() {
         <main className={styles.main}>
           <div className={styles.container}>
             
-            {/* Left Sidebar - Lessons */}
+            {/* LEWA KOLUMNA - Lista Lekcji (Teraz z prawdziwym progresem!) */}
             <div className={styles.sidebar}>
-              <LessonsList lessons={lessons.map(lesson => ({
-                id: parseInt(lesson.id),
-                title: lesson.title,
-                level: lesson.level,
-                progress: lesson.progress,
-                status: lesson.status === 'in_progress' ? 'inprogress' : 
-                       lesson.status === 'completed' ? 'completed' : 'locked'
-              }))} />
+              <LessonsList lessons={lessons} />
             </div>
             
-            {/* Center - Welcome Section */}
+            {/* ŚRODEK - Powitanie */}
             <div className={styles.welcomeSection}>
-              <WelcomeSection user={user} />
+              {userData && <WelcomeSection user={userData} />}
             </div>
             
-            {/* Right Sidebar - Stats */}
+            {/* PRAWA KOLUMNA - Statystyki */}
             <div className={styles.statsSection}>
               <UserStats stats={stats} />
             </div>
-            
+
           </div>
         </main>
       </div>

@@ -10,8 +10,9 @@ import LearningSettings from '../components/LearningSettings';
 import NotificationSettings from '../components/NotificationSettings';
 import PrivacySettings from '../components/PrivacySettings';
 import styles from '../styles/Settings.module.css';
-import { useProfile } from '../hooks/useProfile';
-import { getUserSettings } from '../lib/api';
+// import { useProfile } from '../hooks/useProfile'; // ❌ Usuwamy to
+// import { getUserSettings } from '../lib/api'; // ❌ To też, użyjemy apiRequest bezpośrednio
+import { apiRequest } from '../lib/api'; // ✅ Dodajemy nasz helper
 
 // TypeScript types
 type SettingsTab = 'account' | 'security' | 'learning' | 'notifications' | 'privacy';
@@ -31,40 +32,67 @@ export default function SettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [saveMessage, setSaveMessage] = useState<string>('');
+  
+  // Zastępujemy hook useProfile lokalnym stanem
+  const [user, setUser] = useState<any>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  const [settingsLoading, setSettingsLoading] = useState(false);
+  
+  // Jeden wspólny stan ładowania
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
 
-  // Pobierz dane profilu z bazy
-  const { user, loading, error } = useProfile();
-
-  // Pobierz ustawienia użytkownika
+  // --- NOWA, BEZPIECZNA LOGIKA POBIERANIA DANYCH ---
   useEffect(() => {
-    const fetchSettings = async () => {
-      if (!user) return;
+    const initSettings = async () => {
+      // 1. Sprawdzamy token
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setAuthError(true);
+        setLoading(false);
+        return;
+      }
 
       try {
-        setSettingsLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) return;
+        setLoading(true);
 
-        const settings = await getUserSettings(user.id, token);
-        setUserSettings(settings);
+        // 2. Pobieramy usera (/auth/me)
+        const userData = await apiRequest<any>('/auth/me', 'GET', undefined, token);
+        setUser(userData);
+
+        // 3. Pobieramy ustawienia (lub ustawiamy domyślne, jeśli endpoint nie istnieje)
+        try {
+            // Próbujemy pobrać ustawienia, jeśli masz taki endpoint
+            // const settings = await apiRequest<UserSettings>(`/users/${userData.id}/settings`, 'GET', undefined, token);
+            // setUserSettings(settings);
+            
+            // NA RAZIE: Ustawiamy bezpieczne dane domyślne (Mock), żeby strona działała
+            setUserSettings({
+                id: 1,
+                userId: userData.id,
+                dailyGoal: 5,
+                difficulty: 'Normal',
+                notificationsEnabled: true,
+                emailNotifications: false,
+                profilePublic: true,
+                showStats: true
+            });
+        } catch (settingsErr) {
+            console.warn("Nie udało się pobrać szczegółowych ustawień, używam domyślnych.");
+        }
+
       } catch (err) {
-        console.warn('Failed to load settings:', err);
+        console.error("Błąd ładowania ustawień:", err);
+        setAuthError(true);
       } finally {
-        setSettingsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchSettings();
-  }, [user]);
+    initSettings();
+  }, []);
 
-  // Redirect jeśli brak autoryzacji
-  useEffect(() => {
-    if (!loading && (error || !user)) {
-      router.push('/auth/login');
-    }
-  }, [loading, user, error, router]);
+  // --- KONIEC LOGIKI, DALEJ TYLKO WIDOK ---
 
   // Stan ładowania
   if (loading) {
@@ -78,9 +106,22 @@ export default function SettingsPage() {
     );
   }
 
-  // Zabezpieczenie przed renderowaniem bez usera
-  if (error || !user) {
-    return null;
+  // Zabezpieczenie: jeśli brak usera (błąd auth), pokazujemy ekran błędu zamiast pustej strony
+  if (authError || !user) {
+    return (
+        <Layout>
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <h2>🔒 Wymagane logowanie</h2>
+            <p>Twoja sesja wygasła. Zaloguj się ponownie.</p>
+            <button 
+                onClick={() => router.push('/auth/login')}
+                style={{ marginTop: 20, padding: '10px 20px', cursor: 'pointer' }}
+            >
+                Przejdź do logowania
+            </button>
+          </div>
+        </Layout>
+    );
   }
 
   const handleSaveSuccess = () => {
@@ -169,14 +210,8 @@ export default function SettingsPage() {
 
             {/* Content - active settings section */}
             <div className={styles.content}>
-              {settingsLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                  <div style={{ fontSize: '40px', marginBottom: '10px' }}>⏳</div>
-                  <p>Ładowanie ustawień...</p>
-                </div>
-              ) : (
-                renderContent()
-              )}
+              {/* Usunąłem settingsLoading stąd, bo mamy globalne loading na górze */}
+               {renderContent()}
             </div>
 
           </div>
