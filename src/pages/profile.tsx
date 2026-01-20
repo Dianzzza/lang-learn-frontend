@@ -1,84 +1,134 @@
-'use client';
+// src/pages/profile.tsx
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import ProfileHeader from '../components/ProfileHeader';
 import ProfileStats from '../components/ProfileStats';
 import UserCourses from '../components/UserCourses';
 import ActivityFeed from '../components/ActivityFeed';
-// import styles from '../styles/Profile.module.css'; // Odkomentuj jeśli masz plik CSS
-import { useProfile } from '../hooks/useProfile';
+import { apiRequest } from '../lib/api';
 
 export default function ProfilePage() {
   const router = useRouter();
-  
-  // Używamy naszego custom hooka do pobrania danych
-  const {
-    user,
-    stats,
-    activeCourses,
-    recentActivity,
-    loading,
-    error,
-    refetch,
-  } = useProfile();
+
+  const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false); // Prosta flaga błędu
 
   useEffect(() => {
-    // Logika przekierowania w przypadku braku autoryzacji
-    if (!loading) {
-      if (error || !user) {
-        console.log('Redirecting to login due to error or missing user');
-        // Jeśli błąd sugeruje problem z tokenem, czyścimy go
-        if (error) localStorage.removeItem('token');
-        router.push('/auth/login');
-      }
-    }
-  }, [loading, user, error, router]);
+    const fetchData = async () => {
+      const token = localStorage.getItem('token');
 
-  // Stan ładowania
+      if (!token) {
+        setAuthError(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Pobieramy dane użytkownika
+        const userData = await apiRequest<any>('/auth/me', 'GET', undefined, token);
+        setUser(userData);
+
+        // Ustawiamy statystyki (z bezpiecznymi wartościami domyślnymi)
+        setStats({
+          totalPoints: userData.points || 0,
+          currentStreak: userData.streak_days || 1,
+          longestStreak: userData.streak_days || 1,
+          todayLessons: userData.today_lessons || 0,
+          dailyGoal: 5,
+          totalHours: 0, // Placeholder
+          activeCourses: [] // Placeholder
+        });
+
+      } catch (err) {
+        console.error("Błąd pobierania profilu:", err);
+        // Jeśli błąd sugeruje brak autoryzacji, pokazujemy ekran logowania
+        setAuthError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // --- EKRAN ŁADOWANIA ---
   if (loading) {
     return (
       <Layout>
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
-          <p>Ładowanie profilu...</p>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+          <h2>⏳ Ładowanie profilu...</h2>
         </div>
       </Layout>
     );
   }
 
-  // Zabezpieczenie przed renderowaniem jeśli brak usera (czekamy na redirect z useEffect)
-  if (error || !user) {
-    return null; 
+  // --- EKRAN BRAKU AUTORYZACJI (Zamiast brzydkiego błędu) ---
+  if (authError || !user) {
+    return (
+      <Layout>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px', 
+          maxWidth: '500px', 
+          margin: '0 auto' 
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
+          <h2 style={{ marginBottom: '10px' }}>Sesja wygasła</h2>
+          <p style={{ color: '#6b7280', marginBottom: '30px' }}>
+            Twoja sesja wygasła lub nie jesteś zalogowany. Zaloguj się ponownie, aby zobaczyć profil.
+          </p>
+          <button 
+            onClick={() => {
+              localStorage.removeItem('token');
+              router.push('/login');
+            }}
+            style={{ 
+              padding: '12px 24px', 
+              background: '#4f46e5', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '8px', 
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '16px'
+            }}
+          >
+            Przejdź do logowania
+          </button>
+        </div>
+      </Layout>
+    );
   }
 
+  // --- GŁÓWNY WIDOK PROFILU ---
   return (
     <Layout>
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* Nagłówek profilu */}
         <ProfileHeader
           user={{
             id: user.id,
             username: user.username,
-            displayName: user.displayName || user.username, // Fallback do username
-            email: user.email, // ✅ Tutaj przekazujemy prawidłowy email z bazy!
+            displayName: user.username,
+            email: user.email,
             avatar: user.avatar || '👤',
-            bio: user.bio || '',
+            bio: 'Użytkownik LangLearn',
             level: user.level || 'A1',
-            joinedDate: user.joinedDate || new Date().toISOString(),
-            lastActive: user.lastActive || new Date().toISOString(),
+            joinedDate: user.createdAt || new Date().toISOString(),
+            lastActive: new Date().toISOString(),
           }}
         />
 
-        {/* Główna siatka layoutu */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
           
-          {/* LEWA KOLUMNA: Statystyki i Kursy */}
+          {/* LEWA KOLUMNA */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
-            {/* Statystyki */}
             {stats && (
               <ProfileStats
                 totalPoints={stats.totalPoints}
@@ -87,98 +137,52 @@ export default function ProfilePage() {
                 todayLessons={stats.todayLessons}
                 dailyGoal={stats.dailyGoal}
                 totalHours={stats.totalHours}
-                activeCourses={stats.activeCourses}
+                activeCourses={stats.activeCourses || 0}
               />
             )}
-
-            {/* Aktywne Kursy */}
-            {activeCourses.length > 0 ? (
-              <UserCourses courses={activeCourses} />
-            ) : (
-              // Placeholder gdy brak kursów
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '40px 20px', 
-                backgroundColor: 'white', 
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ fontSize: '40px', marginBottom: '10px' }}>📚</div>
-                <p style={{ marginBottom: '15px', color: '#666' }}>Nie masz jeszcze aktywnych kursów.</p>
-                <button
+             
+             {/* Placeholder Kursów */}
+             <div style={{ 
+                padding: '30px', 
+                background: '#fff', 
+                borderRadius: '16px', 
+                border: '1px solid #f3f4f6',
+                textAlign: 'center'
+             }}>
+                <div style={{ fontSize: '32px', marginBottom: '10px' }}>📚</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Twoje Kursy</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>Nie zapisałeś się jeszcze na żaden kurs.</p>
+                <button 
                   onClick={() => router.push('/study')}
                   style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#4f46e5', // Indigo-600
-                    color: 'white',
+                    marginTop: '15px',
+                    color: '#4f46e5',
+                    background: 'none',
                     border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: '500'
+                    fontWeight: '600',
+                    cursor: 'pointer'
                   }}
                 >
-                  Przeglądaj kursy
+                  Przeglądaj katalog →
                 </button>
-              </div>
-            )}
+             </div>
           </div>
 
-          {/* PRAWA KOLUMNA: Aktywność */}
+          {/* PRAWA KOLUMNA */}
           <div>
-            {recentActivity.length > 0 ? (
-              <ActivityFeed activities={recentActivity} />
-            ) : (
-              // Placeholder gdy brak aktywności
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '40px 20px',
-                backgroundColor: 'white', 
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ fontSize: '40px', marginBottom: '10px' }}>📭</div>
-                <p style={{ marginBottom: '15px', color: '#666' }}>Brak ostatniej aktywności.</p>
-                <button
-                  onClick={() => router.push('/study')}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#4f46e5',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: '500'
-                  }}
-                >
-                  Zacznij naukę
-                </button>
-              </div>
-            )}
+             <div style={{ 
+                padding: '30px', 
+                background: '#fff', 
+                borderRadius: '16px', 
+                border: '1px solid #f3f4f6',
+                textAlign: 'center'
+             }}>
+                <div style={{ fontSize: '32px', marginBottom: '10px' }}>⚡</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Ostatnia aktywność</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>Tutaj pojawi się historia Twojej nauki.</p>
+             </div>
           </div>
         </div>
-
-        {/* Przycisk odświeżania (opcjonalny) */}
-        <div style={{ textAlign: 'center', marginTop: '40px', marginBottom: '20px' }}>
-          <button
-            onClick={refetch}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'transparent',
-              color: '#6b7280', // Gray-500
-              border: '1px solid #d1d5db', // Gray-300
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: '0 auto'
-            }}
-          >
-            <span>🔄</span> Odśwież dane
-          </button>
-        </div>
-        
       </div>
     </Layout>
   );

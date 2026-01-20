@@ -69,10 +69,21 @@ export default function TestBrowser() {
     setLoading(true);
     setError(null);
 
-    fetch(`${API_BASE}/api/categories`)
+    // 👇 TUTAJ JEST ZMIANA (Dodanie Tokena)
+    const token = localStorage.getItem('token'); 
+    
+    // Jeśli nie ma tokena, backend zwróci 401, więc możemy od razu przerwać lub próbować
+    const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    fetch(`${API_BASE}/api/categories`, { headers }) // 👈 Przekazujemy nagłówki
       .then(async (r) => {
         const data = await r.json().catch(() => []);
-        if (!r.ok) throw new Error(data?.error || 'Nie udało się pobrać kategorii');
+        if (!r.ok) throw new Error(data?.error || 'Nie udało się pobrać kategorii (401)');
         return data;
       })
       .then((data) => {
@@ -85,6 +96,8 @@ export default function TestBrowser() {
       });
   }, []);
 
+  // --- RESZTA KODU BEZ ZMIAN ---
+  
   const testsFromDb: LanguageTestCard[] = useMemo(() => {
     return categories.map((c) => ({
       id: c.id,

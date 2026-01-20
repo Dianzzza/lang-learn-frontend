@@ -1,13 +1,12 @@
-
-import Link from 'next/link';
+// frontend/src/components/LessonsList.tsx
 import styles from '../styles/LessonsList.module.css';
 
 interface Lesson {
   id: number;
   title: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level: string;
   progress: number;
-  status: 'completed' | 'inprogress' | 'locked';
+  status: 'locked' | 'inprogress' | 'completed';
 }
 
 interface LessonsListProps {
@@ -15,77 +14,44 @@ interface LessonsListProps {
 }
 
 export default function LessonsList({ lessons }: LessonsListProps) {
-  const getStatusIcon = (status: Lesson['status']): string => {
-    switch (status) {
-      case 'completed':
-        return '✅';
-      case 'inprogress':
-        return '📚';
-      case 'locked':
-        return '🔒';
-      default:
-        return '📖';
-    }
-  };
-
-  const getStatusText = (status: Lesson['status']): string => {
-    switch (status) {
-      case 'completed':
-        return 'Ukończona';
-      case 'inprogress':
-        return 'W trakcie';
-      case 'locked':
-        return 'Zablokowana';
-      default:
-        return 'Dostępna';
-    }
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h2 className={styles.title}>
-          <span className={styles.titleIcon}>📚</span>
-          Dostępne Lekcje
-        </h2>
+        <div className={styles.headerIcon}>📚</div>
+        <h2 className={styles.title}>Dostępne Lekcje</h2>
       </div>
-      
-      <div className={styles.lessonsList}>
+
+      <div className={styles.list}>
         {lessons.map((lesson) => (
-          <Link
-            key={lesson.id}
-            href={`/lesson/${lesson.id}`}
-            className={`${styles.lessonCard} ${styles[lesson.status]}`}
-          >
-            <div className={styles.lessonHeader}>
-              <h3 className={styles.lessonTitle}>{lesson.title}</h3>
+          // Używamy zwykłego div zamiast Link lub button, żeby wyłączyć klikanie
+          <div key={lesson.id} className={styles.lessonCard}>
+            <div className={styles.cardHeader}>
+              <span className={styles.lessonTitle}>{lesson.title}</span>
               <span className={`${styles.levelBadge} ${styles[lesson.level.toLowerCase()]}`}>
                 {lesson.level}
               </span>
             </div>
-            
-            <div className={styles.progressSection}>
+
+            <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
                 <div 
-                  className={styles.progressFill}
+                  className={styles.progressFill} 
                   style={{ width: `${lesson.progress}%` }}
                 ></div>
               </div>
-              <span className={styles.progressText}>
-                {lesson.progress}%
-              </span>
+              <span className={styles.progressText}>{lesson.progress}%</span>
             </div>
+
             
-            <div className={styles.statusIcon}>
-              {getStatusIcon(lesson.status)}
-            </div>
-          </Link>
+            
+          </div>
         ))}
-        
-        <button className={styles.addFlashcardBtn}>
-          <span className={styles.addIcon}>+</span>
-          Dodaj własną fiszkę
-        </button>
+
+        {lessons.length === 0 && (
+          <div style={{ padding: '1rem', color: '#666', fontSize: '0.9rem' }}>
+            Brak dostępnych lekcji.
+          </div>
+        )}
       </div>
     </div>
   );

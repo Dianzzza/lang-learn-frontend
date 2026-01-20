@@ -1,16 +1,12 @@
-
-'use client';
-
-import { useState, useEffect } from 'react';
+// src/components/WelcomeSection.tsx
+import { useRouter } from 'next/router';
 import styles from '../styles/WelcomeSection.module.css';
 
 interface User {
   username: string;
-  points?: number;
-  streak_days?: number;
-  today_lessons?: number;
-  target_lessons?: number;
-  // Dodaj inne właściwości user, jeśli są potrzebne
+  streak_days: number;
+  today_lessons: number;
+  target_lessons: number;
 }
 
 interface WelcomeSectionProps {
@@ -18,73 +14,57 @@ interface WelcomeSectionProps {
 }
 
 export default function WelcomeSection({ user }: WelcomeSectionProps) {
-  const [currentTime, setCurrentTime] = useState<string>('');
+  const router = useRouter();
 
-  useEffect(() => {
-    const updateTime = (): void => {
-      const now = new Date();
-      const hour = now.getHours();
-      
-      if (hour < 12) {
-        setCurrentTime('Dzień dobry');
-      } else if (hour < 18) {
-        setCurrentTime('Dzień dobry');
-      } else {
-        setCurrentTime('Dobry wieczór');
-      }
-    };
+  // 👇 TUTAJ ZMIANA: Kierujemy do /study (wybór trybu), a nie od razu do fiszek
+  const handleStartLearning = () => {
+    router.push('/study'); 
+  };
 
-    updateTime();
-    const interval = setInterval(updateTime, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const progressPercentage = user.today_lessons && user.target_lessons 
-    ? Math.min((user.today_lessons / user.target_lessons) * 100, 100)
-    : 0;
+  const progressPercentage = Math.min(
+    Math.round((user.today_lessons / user.target_lessons) * 100),
+    100
+  );
 
   return (
     <div className={styles.container}>
       <div className={styles.welcomeCard}>
         <div className={styles.greeting}>
           <h1 className={styles.welcomeTitle}>
-            {currentTime}, {user.username}! 👋
+            Dzień dobry, {user.username}! 👋
           </h1>
           <p className={styles.welcomeSubtitle}>
             Gotowy na kolejną przygodę?
           </p>
         </div>
 
-        {user.streak_days !== undefined && user.streak_days > 0 && (
-          <div className={styles.streak}>
-            <span className={styles.streakIcon}>🔥</span>
-            <span className={styles.streakText}>
-              {user.streak_days} dni z rzędu!
-            </span>
-          </div>
-        )}
+        <div className={styles.streak}>
+          <span className={styles.streakIcon}>🔥</span>
+          <span className={styles.streakText}>
+            {user.streak_days} {user.streak_days === 1 ? 'dzień' : 'dni'} z rzędu!
+          </span>
+        </div>
 
-        {user.today_lessons !== undefined && user.target_lessons !== undefined && (
-          <div className={styles.dailyGoal}>
-            <div className={styles.goalProgress}>
-              <div className={styles.goalHeader}>
-                <span className={styles.goalIcon}>🎯</span>
-                <span className={styles.goalText}>Dzienny cel</span>
-              </div>
-              <div className={styles.goalBar}>
-                <div 
-                  className={styles.goalFill}
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
-              </div>
-              <div className={styles.goalNumbers}>
-                {user.today_lessons} / {user.target_lessons} lekcji
-              </div>
+        <div className={styles.dailyGoal}>
+          <div className={styles.goalHeader}>
+            <span className={styles.goalIcon}>🎯</span>
+            <span className={styles.goalText}>Dzienny cel</span>
+          </div>
+          
+          <div className={styles.goalProgress}>
+            <div className={styles.goalBar}>
+              <div 
+                className={styles.goalFill} 
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+            <div className={styles.goalNumbers}>
+              {user.today_lessons} / {user.target_lessons} lekcji
             </div>
           </div>
-        )}
+        </div>
 
-        <button className={styles.startLearningBtn}>
+        <button onClick={handleStartLearning} className={styles.startLearningBtn}>
           <span className={styles.btnIcon}>📚</span>
           Rozpocznij naukę
         </button>
