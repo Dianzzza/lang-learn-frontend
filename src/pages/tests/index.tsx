@@ -1,5 +1,12 @@
-// pages/tests/index.tsx
-// TESTY (wybór kategorii do testu – dane z bazy)
+/**
+ * @file TestBrowser.tsx
+ * @brief Przeglądarka testów językowych.
+ *
+ * Komponent katalogu, który umożliwia użytkownikowi wybór testu sprawdzającego wiedzę.
+ * Różni się od quizów tym, że testy są zazwyczaj dłuższe, trudniejsze i mają formę wpisywania (Fill-in-the-gap).
+ *
+ * Pobiera kategorie z API i prezentuje je jako dostępne "Testy" (np. Test z owoców, Test gramatyczny).
+ */
 
 'use client';
 
@@ -8,13 +15,18 @@ import Link from 'next/link';
 import Layout from '@/components/Layout';
 import styles from '@/styles/TestBrowser.module.css';
 
+/** DTO Kategorii z API. */
 type CategoryDTO = {
   id: number;
   name: string;
 };
 
+/**
+ * Model karty testu w UI.
+ * Zawiera szczegółowe metadane o strukturze testu (czas, sekcje, umiejętności).
+ */
 interface LanguageTestCard {
-  id: number; // categoryId
+  id: number; // Odpowiada CategoryID
   title: string;
   description: string;
   type: 'placement' | 'achievement' | 'diagnostic' | 'proficiency' | 'mock-exam';
@@ -37,6 +49,7 @@ interface LanguageTestCard {
 
 const API_BASE = 'http://localhost:4000';
 
+/** Helper do dobierania emotikon na podstawie nazwy (Mock Logic). */
 const pickEmoji = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('fruit')) return '🍎';
@@ -45,11 +58,18 @@ const pickEmoji = (name: string) => {
   return '📝';
 };
 
+/**
+ * Komponent TestBrowser.
+ *
+ * @returns {JSX.Element} Lista dostępnych testów.
+ */
 export default function TestBrowser() {
+  // --- STANY FILTRÓW ---
   const [selectedType, setSelectedType] = useState('all');
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // --- STANY DANYCH ---
   const [categories, setCategories] = useState<CategoryDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,14 +85,17 @@ export default function TestBrowser() {
 
   const levels = ['all', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Mixed'];
 
+  /**
+   * Efekt inicjalizacji: Pobranie kategorii z API.
+   * Wymaga Tokena JWT w nagłówku Authorization.
+   */
   useEffect(() => {
     setLoading(true);
     setError(null);
 
-    // 👇 TUTAJ JEST ZMIANA (Dodanie Tokena)
     const token = localStorage.getItem('token'); 
     
-    // Jeśli nie ma tokena, backend zwróci 401, więc możemy od razu przerwać lub próbować
+    // Konfiguracja nagłówków z tokenem
     const headers: HeadersInit = {
         'Content-Type': 'application/json'
     };
@@ -80,7 +103,7 @@ export default function TestBrowser() {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    fetch(`${API_BASE}/api/categories`, { headers }) // 👈 Przekazujemy nagłówki
+    fetch(`${API_BASE}/api/categories`, { headers })
       .then(async (r) => {
         const data = await r.json().catch(() => []);
         if (!r.ok) throw new Error(data?.error || 'Nie udało się pobrać kategorii (401)');
@@ -96,14 +119,16 @@ export default function TestBrowser() {
       });
   }, []);
 
-  // --- RESZTA KODU BEZ ZMIAN ---
-  
+  /**
+   * Transformacja danych: Category -> LanguageTestCard.
+   * Tworzy obiekty testów na podstawie pobranych kategorii.
+   */
   const testsFromDb: LanguageTestCard[] = useMemo(() => {
     return categories.map((c) => ({
       id: c.id,
       title: `Test: ${c.name}`,
       description: `Uzupełnij lukę w zdaniu i wpisz słowo po angielsku (podpowiedź po polsku).`,
-      type: 'achievement',
+      type: 'achievement', // Domyślny typ
       level: 'Mixed',
       duration: 5,
       sectionsCount: 1,
@@ -119,6 +144,7 @@ export default function TestBrowser() {
     }));
   }, [categories]);
 
+  // --- LOGIKA FILTROWANIA ---
   const filteredTests = testsFromDb.filter((test) => {
     const matchesSearch =
       test.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -134,6 +160,8 @@ export default function TestBrowser() {
     <Layout>
       <div className={styles.page}>
         <div className={styles.container}>
+          
+          {/* Header Sekcji */}
           <div className={styles.pageHeader}>
             <h1 className={styles.pageTitle}>
               <span className={styles.titleIcon}>📝</span>
@@ -144,6 +172,7 @@ export default function TestBrowser() {
             </p>
           </div>
 
+          {/* Filtry */}
           <div className={styles.filtersSection}>
             <div className={styles.searchBar}>
               <input
@@ -188,6 +217,7 @@ export default function TestBrowser() {
           {loading && <p className={styles.pageDescription}>Ładowanie kategorii...</p>}
           {error && <p className={styles.pageDescription}>Błąd: {error}</p>}
 
+          {/* Grid Kart Testów */}
           <div className={styles.testsGrid}>
             {filteredTests.map((test, index) => (
               <div

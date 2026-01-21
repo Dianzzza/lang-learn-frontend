@@ -1,5 +1,14 @@
-// pages/grammar/[id]/index.tsx
-// SZCZEGÓŁOWA LEKCJA GRAMATYKI
+/**
+ * @file GrammarLesson.tsx
+ * @brief Szczegółowy widok lekcji gramatyki.
+ *
+ * Komponent ten implementuje klasyczny model nauczania "PPP" (Presentation, Practice, Production) w uproszczonej formie:
+ * 1. **Teoria (Theory):** Definicje, wzory zdań i wyjaśnienia.
+ * 2. **Przykłady (Examples):** Zestawienia zdań poprawnych i błędnych (analiza kontrastowa).
+ * 3. **Ćwiczenia (Exercises):** Interaktywny quiz z natychmiastową informacją zwrotną.
+ *
+ * Obecnie korzysta z danych statycznych (Mock Data), które w przyszłości zostaną zastąpione pobieraniem z API na podstawie `params.id`.
+ */
 
 'use client';
 
@@ -8,6 +17,10 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import styles from '@/styles/GrammarLesson.module.css';
 
+/**
+ * Struktura danych dla sekcji teoretycznej.
+ * Pozwala na zdefiniowanie reguły, wzoru matematycznego zdania oraz typowych błędów.
+ */
 interface GrammarRule {
   id: number;
   title: string;
@@ -25,26 +38,46 @@ interface GrammarRule {
   }[];
 }
 
+/**
+ * Struktura pojedynczego zadania w sekcji ćwiczeń.
+ * Obsługuje różne typy pytań (luki, wybór wielokrotny).
+ */
 interface Exercise {
   id: number;
   type: 'fill-gap' | 'transform' | 'correct-mistake' | 'multiple-choice';
   question: string;
-  options?: string[];
+  options?: string[]; // Tylko dla multiple-choice
   correctAnswer: string;
-  explanation: string;
-  hint?: string;
+  explanation: string; // Wyświetlane po udzieleniu odpowiedzi
+  hint?: string; // Podpowiedź dostępna przed odpowiedzią
 }
 
+/**
+ * Komponent GrammarLesson.
+ *
+ * @param {object} params - Parametry routingu (id lekcji).
+ * @returns {JSX.Element} Interaktywna lekcja gramatyki.
+ */
 export default function GrammarLesson({ params }: { params?: { id?: string } }) {
   const router = useRouter();
+  
+  // --- STANY UI ---
+  /** Zarządza aktywną zakładką (Teoria / Przykłady / Ćwiczenia) */
   const [currentSection, setCurrentSection] = useState<'theory' | 'examples' | 'exercises'>('theory');
+  
+  /** Indeks aktualnie rozwiązywanego zadania */
   const [currentExercise, setCurrentExercise] = useState(0);
+  
+  /** Odpowiedź wpisana/wybrana przez użytkownika */
   const [userAnswer, setUserAnswer] = useState('');
+  
+  /** Flaga sterująca widocznością rozwiązania i wyjaśnienia */
   const [showAnswer, setShowAnswer] = useState(false);
 
   const lessonId = params?.id ? parseInt(params.id) : 1;
 
-  // 🔒 PRZYKŁADOWA LEKCJA - Present Simple vs Continuous
+  // --- MOCK DATA (TREŚĆ LEKCJI) ---
+  // W wersji produkcyjnej te dane byłyby pobierane z API (np. useGrammarLesson(lessonId))
   const grammarRules: GrammarRule[] = [
     {
       id: 1,
@@ -110,10 +143,14 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
     }
   ];
 
+  // --- LOGIKA INTERAKCJI ---
+
+  /** Zatwierdza odpowiedź użytkownika i pokazuje feedback. */
   const handleAnswerSubmit = () => {
     setShowAnswer(true);
   };
 
+  /** Przechodzi do następnego pytania lub kończy lekcję. */
   const nextExercise = () => {
     if (currentExercise < exercises.length - 1) {
       setCurrentExercise(currentExercise + 1);
@@ -129,7 +166,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
       <div className={styles.page}>
         <div className={styles.container}>
           
-          {/* 🎯 LESSON HEADER */}
+          {/* HEADER: Tytuł lekcji i metadane */}
           <div className={styles.lessonHeader}>
             <button onClick={() => router.push('/grammar')} className={styles.backBtn}>
               <span className={styles.backIcon}>←</span>
@@ -149,7 +186,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
             </div>
           </div>
 
-          {/* 📋 SECTION NAVIGATION */}
+          {/* NAWIGACJA ZAKŁADEK (Tab Navigation) */}
           <div className={styles.sectionNav}>
             <button
               onClick={() => setCurrentSection('theory')}
@@ -174,7 +211,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
             </button>
           </div>
 
-          {/* 📖 THEORY SECTION */}
+          {/* 1. SEKCJA TEORII */}
           {currentSection === 'theory' && (
             <div className={styles.theorySection}>
               {grammarRules.map(rule => (
@@ -203,7 +240,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
             </div>
           )}
 
-          {/* 💡 EXAMPLES SECTION */}
+          {/* 2. SEKCJA PRZYKŁADÓW I BŁĘDÓW */}
           {currentSection === 'examples' && (
             <div className={styles.examplesSection}>
               {grammarRules.map(rule => (
@@ -227,6 +264,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
                     ))}
                   </div>
                   
+                  {/* Sekcja "Częste błędy" (Common Mistakes) */}
                   {rule.commonMistakes && (
                     <div className={styles.mistakesSection}>
                       <div className={styles.mistakesTitle}>
@@ -255,7 +293,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
             </div>
           )}
 
-          {/* ✏️ EXERCISES SECTION */}
+          {/* 3. SEKCJA ĆWICZEŃ (INTERAKTYWNA) */}
           {currentSection === 'exercises' && (
             <div className={styles.exercisesSection}>
               <div className={styles.exerciseCard}>
@@ -277,7 +315,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
                     {currentExerciseData.question}
                   </h3>
 
-                  {/* FILL GAP */}
+                  {/* Renderowanie inputa dla Fill Gap */}
                   {currentExerciseData.type === 'fill-gap' && (
                     <div className={styles.fillGap}>
                       <input
@@ -291,7 +329,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
                     </div>
                   )}
 
-                  {/* MULTIPLE CHOICE */}
+                  {/* Renderowanie przycisków dla Multiple Choice */}
                   {currentExerciseData.type === 'multiple-choice' && currentExerciseData.options && (
                     <div className={styles.multipleChoice}>
                       {currentExerciseData.options.map((option, index) => (
@@ -310,7 +348,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
                     </div>
                   )}
 
-                  {/* HINT */}
+                  {/* Podpowiedź (widoczna przed odpowiedzią) */}
                   {currentExerciseData.hint && !showAnswer && (
                     <div className={styles.hintSection}>
                       <div className={styles.hintText}>
@@ -320,7 +358,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
                     </div>
                   )}
 
-                  {/* ANSWER & EXPLANATION */}
+                  {/* Wynik i Wyjaśnienie (widoczne po odpowiedzi) */}
                   {showAnswer && (
                     <div className={styles.answerSection}>
                       <div className={styles.correctAnswer}>
@@ -335,6 +373,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
                   )}
                 </div>
 
+                {/* Przyciski Akcji (Sprawdź / Dalej / Zakończ) */}
                 <div className={styles.exerciseActions}>
                   {!showAnswer ? (
                     <button 

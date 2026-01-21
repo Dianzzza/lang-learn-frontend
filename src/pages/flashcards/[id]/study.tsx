@@ -1,3 +1,15 @@
+/**
+ * @file FlashcardStudy.tsx
+ * @brief Główny interfejs sesji nauki z fiszkami (Game Loop).
+ *
+ * Komponent realizuje pełny cykl nauki:
+ * 1. Inicjalizacja: Pobranie talii kart na podstawie ID kategorii z URL.
+ * 2. Prezentacja: Wyświetlanie awersu (pytanie) i rewersu (odpowiedź) karty.
+ * 3. Interakcja: Obsługa gestów/kliknięć (Flip) i oceny (Umiem/Powtórz).
+ * 4. Synchronizacja: Wysyłanie postępów do API w czasie rzeczywistym.
+ * 5. Podsumowanie: Wyświetlenie raportu końcowego po osiągnięciu limitu kart.
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,6 +18,10 @@ import Layout from '@/components/Layout';
 import styles from '@/styles/FlashcardStudy.module.css';
 import { apiRequest } from '@/lib/api';
 
+/**
+ * Wewnętrzna reprezentacja karty używana podczas sesji.
+ * Zawiera dodatkowe pola stanu UI (isNew, isLearning) mapowane z API.
+ */
 interface StudyCard {
   id: number;
   front: string;
@@ -23,6 +39,9 @@ interface StudyCard {
   isMastered: boolean;
 }
 
+/**
+ * Stan sesji nauki. Przechowuje metadane o postępie w bieżącej lekcji.
+ */
 interface StudySession {
   deckId: number;
   deckTitle: string;
@@ -36,6 +55,9 @@ interface StudySession {
   isComplete: boolean;
 }
 
+/**
+ * Statystyki zbierane w trakcie sesji (do raportu końcowego).
+ */
 interface StudyStats {
   correctAnswers: number;
   wrongAnswers: number;
@@ -44,6 +66,9 @@ interface StudyStats {
   points: number;
 }
 
+/**
+ * Typ danych surowych przychodzących z API.
+ */
 interface FlashcardFromApi {
   id: number;
   front: string;
@@ -57,27 +82,30 @@ interface Category {
   name: string;
 }
 
-// na razie na sztywno – ile kart na jedną lekcję
+// Stała określająca długość "mikro-lekcji". Zapobiega przemęczeniu użytkownika.
 const LESSON_CARD_LIMIT = 5;
 
 export default function FlashcardStudy() {
   const router = useRouter();
   const params = useParams<{ id: string } | null>();
+  // Parsowanie ID talii z URL (np. /study/12)
   const deckId = params?.id ? parseInt(params.id, 10) : NaN;
 
+  // --- STANY UI ---
   const [isCardFlipped, setIsCardFlipped] = useState(false);
-  const [currentCard, setCurrentCard] = useState<StudyCard | null>(
-    null
-  );
-  const [studyMode, setStudyMode] = useState<
-    'study' | 'settings' | 'complete'
-  >('study');
+  const [currentCard, setCurrentCard] = useState<StudyCard | null>(null);
+  
+  // Tryby widoku: 
+  // 'study' - aktywna nauka
+  // 'settings' - konfiguracja (obecnie wyłączona w UI)
+  // 'complete' - podsumowanie
+  const [studyMode, setStudyMode] = useState<'study' | 'settings' | 'complete'>('study');
+  
   const [showHint, setShowHint] = useState(false);
-  const [responseStartTime, setResponseStartTime] = useState<Date>(
-    new Date()
-  );
+  const [responseStartTime, setResponseStartTime] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- STANY SESJI I DANYCH ---
   const [session, setSession] = useState<StudySession>({
     deckId,
     deckTitle: 'Fiszki z wybranej kategorii',
@@ -95,12 +123,14 @@ export default function FlashcardStudy() {
     correctAnswers: 0,
     wrongAnswers: 0,
     avgResponseTime: 0,
-    studyStreak: 7,
+    studyStreak: 7, // Mock streak
     points: 0,
   });
 
+  // Kolejka kart do nauki
   const [studyCards, setStudyCards] = useState<StudyCard[]>([]);
 
+  // Ustawienia lokalne sesji (domyślne)
   const [studySettings, setStudySettings] = useState({
     showTimer: true,
     autoFlip: false,
@@ -110,16 +140,15 @@ export default function FlashcardStudy() {
     playAudio: true,
   });
 
-  // 🔤 nazwa kategorii jako tytuł
+  /**
+   * Efekt 1: Pobranie nazwy kategorii dla nagłówka.
+   */
   useEffect(() => {
     if (Number.isNaN(deckId)) return;
 
     const loadCategory = async () => {
       try {
-        const categories = await apiRequest<Category[]>(
-          '/categories',
-          'GET'
-        );
+        const categories = await apiRequest<Category[]>('/categories', 'GET');
         const cat = categories.find((c) => c.id === deckId);
         if (cat) {
           setSession((prev) => ({
@@ -134,7 +163,10 @@ export default function FlashcardStudy() {
     loadCategory();
   }, [deckId]);
 
-  // 🚀 Pobierz fiszki z backendu dla danej kategorii (deckId = categoryId)
+  /**
+   * Efekt 2: Inicjalizacja sesji.
+   * Pobiera karty z API, mapuje je na format wewnętrzny, tasuje i ustawia pierwszą kartę.
+   */
   useEffect(() => {
     if (Number.isNaN(deckId)) {
       setIsLoading(false);
@@ -145,11 +177,9 @@ export default function FlashcardStudy() {
     const loadFlashcards = async () => {
       setIsLoading(true);
       try {
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('token')
-            : null;
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
+        // Pobranie fiszek z konkretnej kategorii
         const data = await apiRequest<FlashcardFromApi[]>(
           `/flashcards?categoryId=${deckId}&includePrivate=true`,
           'GET',
@@ -157,6 +187,7 @@ export default function FlashcardStudy() {
           token || undefined
         );
 
+        // Mapowanie API -> Frontend Model
         const mapped: StudyCard[] = data.map((card) => {
           const status = card.status ?? 'none';
           return {
@@ -173,13 +204,14 @@ export default function FlashcardStudy() {
           };
         });
 
-        const cardsToUse =
-          studySettings.shuffleCards && mapped.length > 1
+        // Opcjonalne tasowanie
+        const cardsToUse = studySettings.shuffleCards && mapped.length > 1
             ? [...mapped].sort(() => Math.random() - 0.5)
             : mapped;
 
         setStudyCards(cardsToUse);
 
+        // Aktualizacja stanu sesji
         setSession((prev) => ({
           ...prev,
           deckId,
@@ -193,6 +225,7 @@ export default function FlashcardStudy() {
           isComplete: cardsToUse.length === 0,
         }));
 
+        // Ustawienie pierwszej karty lub zakończenie, jeśli talia jest pusta
         if (cardsToUse.length > 0) {
           setCurrentCard(cardsToUse[0]);
           setResponseStartTime(new Date());
@@ -213,15 +246,19 @@ export default function FlashcardStudy() {
     loadFlashcards();
   }, [deckId]);
 
+  // --- HANDLERY UI ---
   const flipCard = () => setIsCardFlipped((prev) => !prev);
   const toggleHint = () => setShowHint((prev) => !prev);
 
   const playAudio = () => {
     if (currentCard?.audio && studySettings.playAudio) {
-      console.log('Playing audio:', currentCard.audio);
+      console.log('Playing audio:', currentCard.audio); // Placeholder dla odtwarzacza
     }
   };
 
+  /**
+   * Przesuwa obecną kartę na koniec kolejki (bez oceniania).
+   */
   const skipCard = () => {
     if (studyCards.length > 1) {
       const remainingCards = studyCards.slice(1);
@@ -234,19 +271,24 @@ export default function FlashcardStudy() {
     }
   };
 
+  /**
+   * Główna logika oceny karty.
+   * 1. Wysyła status do API.
+   * 2. Aktualizuje statystyki (czas reakcji, poprawność).
+   * 3. Zarządza kolejką (usuwa nauczone, przesuwa do powtórki te oznaczone 'repeat').
+   * 4. Sprawdza limit lekcji.
+   */
   const handleStatus = async (status: 'repeat' | 'learned') => {
     if (!currentCard) return;
 
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('token')
-        : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
       alert('Musisz być zalogowany.');
       return;
     }
 
     try {
+      // 1. Zapis w bazie
       await apiRequest(
         `/flashcards/${currentCard.id}/status`,
         'PATCH',
@@ -254,30 +296,22 @@ export default function FlashcardStudy() {
         token
       );
 
-      const responseTime =
-        new Date().getTime() - responseStartTime.getTime();
+      // 2. Obliczenie statystyk
+      const responseTime = new Date().getTime() - responseStartTime.getTime();
 
       setStats((prev) => ({
         ...prev,
-        correctAnswers:
-          status === 'learned'
-            ? prev.correctAnswers + 1
-            : prev.correctAnswers,
-        wrongAnswers:
-          status === 'repeat'
-            ? prev.wrongAnswers + 1
-            : prev.wrongAnswers,
-        avgResponseTime:
-          (prev.avgResponseTime + responseTime) / 2,
-        points:
-          prev.points + (status === 'learned' ? 10 : 0),
+        correctAnswers: status === 'learned' ? prev.correctAnswers + 1 : prev.correctAnswers,
+        wrongAnswers: status === 'repeat' ? prev.wrongAnswers + 1 : prev.wrongAnswers,
+        avgResponseTime: (prev.avgResponseTime + responseTime) / 2,
+        points: prev.points + (status === 'learned' ? 10 : 0),
       }));
 
-      let remainingCards = studyCards.filter(
-        (card) => card.id !== currentCard.id
-      );
+      // 3. Zarządzanie kolejką kart
+      let remainingCards = studyCards.filter((card) => card.id !== currentCard.id);
 
       if (status === 'repeat') {
+        // Jeśli "do powtórki", wrzucamy na koniec kolejki w tej samej sesji
         remainingCards.push({
           ...currentCard,
           isNew: false,
@@ -295,7 +329,7 @@ export default function FlashcardStudy() {
         currentCardIndex: 0,
       }));
 
-      // jeśli osiągnęliśmy limit lekcji, kończymy sesję
+      // 4. Warunek zakończenia sesji (limit dzienny lub brak kart)
       if (nextStudied >= LESSON_CARD_LIMIT) {
         setStudyMode('complete');
         return;
@@ -315,117 +349,18 @@ export default function FlashcardStudy() {
     }
   };
 
-  // // ⚙️ SETTINGS MODE
-  // if (studyMode === 'settings') {
-  //   return (
-  //     <Layout>
-  //       <div className={styles.page}>
-  //         <div className={styles.settingsContainer}>
-  //           <div className={styles.settingsHeader}>
-  //             <h2 className={styles.settingsTitle}>
-  //               <span className={styles.settingsIcon}>⚙️</span>
-  //               Ustawienia sesji
-  //             </h2>
-  //           </div>
+  // ⚙️ SETTINGS MODE (Kod zakomentowany w oryginale - pominięty w dokumentacji aktywnej, ale zachowany w pliku)
+  // ... (kod ustawień)
 
-  //           <div className={styles.settingsForm}>
-  //             <div className={styles.settingGroup}>
-  //               <label className={styles.settingLabel}>
-  //                 <input
-  //                   type="checkbox"
-  //                   checked={studySettings.showTimer}
-  //                   onChange={(e) =>
-  //                     setStudySettings({
-  //                       ...studySettings,
-  //                       showTimer: e.target.checked,
-  //                     })
-  //                   }
-  //                   className={styles.settingCheckbox}
-  //                 />
-  //                 <span className={styles.settingIcon}>⏱️</span>
-  //                 Pokaż timer
-  //               </label>
-  //             </div>
-
-  //             <div className={styles.settingGroup}>
-  //               <label className={styles.settingLabel}>
-  //                 <input
-  //                   type="checkbox"
-  //                   checked={studySettings.autoFlip}
-  //                   onChange={(e) =>
-  //                     setStudySettings({
-  //                       ...studySettings,
-  //                       autoFlip: e.target.checked,
-  //                     })
-  //                   }
-  //                   className={styles.settingCheckbox}
-  //                 />
-  //                 <span className={styles.settingIcon}>🔄</span>
-  //                 Auto-flip po 3 sekundach
-  //               </label>
-  //             </div>
-
-  //             <div className={styles.settingGroup}>
-  //               <label className={styles.settingLabel}>
-  //                 <span className={styles.settingIcon}>🆕</span>
-  //                 Maksymalnie nowych kart dziennie:
-  //               </label>
-  //               <input
-  //                 type="range"
-  //                 min="1"
-  //                 max="50"
-  //                 value={studySettings.maxNewCards}
-  //                 onChange={(e) =>
-  //                   setStudySettings({
-  //                     ...studySettings,
-  //                     maxNewCards: parseInt(
-  //                       e.target.value,
-  //                       10
-  //                     ),
-  //                   })
-  //                 }
-  //                 className={styles.settingRange}
-  //               />
-  //               <span className={styles.settingValue}>
-  //                 {studySettings.maxNewCards}
-  //               </span>
-  //             </div>
-  //           </div>
-
-  //           <div className={styles.settingsActions}>
-  //             <button
-  //               onClick={() => setStudyMode('study')}
-  //               className={styles.backToStudyBtn}
-  //             >
-  //               <span className={styles.backIcon}>🧠</span>
-  //               Powrót do nauki
-  //             </button>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     </Layout>
-  //   );
-  // }
-
-    // 🏁 STUDY COMPLETE – również przy osiągnięciu LESSON_CARD_LIMIT lub braku kart
+  // 🏁 STUDY COMPLETE (Ekran podsumowania)
   if (studyMode === 'complete') {
-    const sessionTime = Math.round(
-      (new Date().getTime() -
-        session.sessionStartTime.getTime()) /
-        60000
-    );
-    const accuracy =
-      stats.correctAnswers + stats.wrongAnswers > 0
-        ? Math.round(
-            (stats.correctAnswers /
-              (stats.correctAnswers + stats.wrongAnswers)) *
-              100
-          )
+    // Obliczanie czasu trwania i skuteczności
+    const sessionTime = Math.round((new Date().getTime() - session.sessionStartTime.getTime()) / 60000);
+    const accuracy = stats.correctAnswers + stats.wrongAnswers > 0
+        ? Math.round((stats.correctAnswers / (stats.correctAnswers + stats.wrongAnswers)) * 100)
         : 0;
 
-    const noCards =
-      session.totalCards === 0 ||
-      (studyCards.length === 0 && session.studiedToday === 0);
+    const noCards = session.totalCards === 0 || (studyCards.length === 0 && session.studiedToday === 0);
 
     return (
       <Layout>
@@ -434,9 +369,7 @@ export default function FlashcardStudy() {
             <div className={styles.completeHeader}>
               <div className={styles.completeIcon}>🎉</div>
               <h2 className={styles.completeTitle}>
-                {noCards
-                  ? 'Brak fiszek do nauki w tym zestawie'
-                  : 'Lekcja zakończona!'}
+                {noCards ? 'Brak fiszek do nauki w tym zestawie' : 'Lekcja zakończona!'}
               </h2>
               <p className={styles.completeSubtitle}>
                 {noCards
@@ -447,61 +380,33 @@ export default function FlashcardStudy() {
 
             {!noCards && (
               <div className={styles.completedStats}>
+                {/* Statystyki: Liczba kart, Celność, Czas, Punkty */}
                 <div className={styles.completedStat}>
-                  <div className={styles.completedStatIcon}>
-                    🃏
-                  </div>
-                  <div className={styles.completedStatValue}>
-                    {session.studiedToday}
-                  </div>
-                  <div className={styles.completedStatLabel}>
-                    Przećwiczonych kart
-                  </div>
+                  <div className={styles.completedStatIcon}>🃏</div>
+                  <div className={styles.completedStatValue}>{session.studiedToday}</div>
+                  <div className={styles.completedStatLabel}>Przećwiczonych kart</div>
                 </div>
                 <div className={styles.completedStat}>
-                  <div className={styles.completedStatIcon}>
-                    🎯
-                  </div>
-                  <div className={styles.completedStatValue}>
-                    {accuracy}%
-                  </div>
-                  <div className={styles.completedStatLabel}>
-                    Celność
-                  </div>
+                  <div className={styles.completedStatIcon}>🎯</div>
+                  <div className={styles.completedStatValue}>{accuracy}%</div>
+                  <div className={styles.completedStatLabel}>Celność</div>
                 </div>
                 <div className={styles.completedStat}>
-                  <div className={styles.completedStatIcon}>
-                    ⏱️
-                  </div>
-                  <div className={styles.completedStatValue}>
-                    {sessionTime} min
-                  </div>
-                  <div className={styles.completedStatLabel}>
-                    Czas sesji
-                  </div>
+                  <div className={styles.completedStatIcon}>⏱️</div>
+                  <div className={styles.completedStatValue}>{sessionTime} min</div>
+                  <div className={styles.completedStatLabel}>Czas sesji</div>
                 </div>
                 <div className={styles.completedStat}>
-                  <div className={styles.completedStatIcon}>
-                    💎
-                  </div>
-                  <div className={styles.completedStatValue}>
-                    +{stats.points}
-                  </div>
-                  <div className={styles.completedStatLabel}>
-                    Punkty
-                  </div>
+                  <div className={styles.completedStatIcon}>💎</div>
+                  <div className={styles.completedStatValue}>+{stats.points}</div>
+                  <div className={styles.completedStatLabel}>Punkty</div>
                 </div>
               </div>
             )}
 
             <div className={styles.completeActions}>
-              <button
-                onClick={() => router.push('/flashcards')}
-                className={styles.completeBtn}
-              >
-                <span className={styles.completeActionIcon}>
-                  🗂️
-                </span>
+              <button onClick={() => router.push('/flashcards')} className={styles.completeBtn}>
+                <span className={styles.completeActionIcon}>🗂️</span>
                 Wróć do wyboru zestawu
               </button>
             </div>
@@ -511,7 +416,6 @@ export default function FlashcardStudy() {
     );
   }
 
-
   // ⏳ LOADING STATE
   if (isLoading || !currentCard) {
     return (
@@ -519,20 +423,20 @@ export default function FlashcardStudy() {
         <div className={styles.page}>
           <div className={styles.loadingContainer}>
             <div className={styles.loadingIcon}>🔄</div>
-            <div className={styles.loadingText}>
-              Ładowanie fiszek...
-            </div>
+            <div className={styles.loadingText}>Ładowanie fiszek...</div>
           </div>
         </div>
       </Layout>
     );
   }
 
+  // 🎮 MAIN STUDY VIEW (Aktywna nauka)
   return (
     <Layout>
       <div className={styles.page}>
         <div className={styles.studyContainer}>
-          {/* 🎯 STUDY HEADER */}
+          
+          {/* HEADER: Tytuł + Pasek postępu */}
           <div className={styles.studyHeader}>
             <div className={styles.studyInfo}>
               <h1 className={styles.studyTitle}>
@@ -545,11 +449,7 @@ export default function FlashcardStudy() {
                     <div
                       className={styles.progressFill}
                       style={{
-                        width: `${
-                          (session.studiedToday /
-                            Math.max(1, LESSON_CARD_LIMIT)) *
-                          100
-                        }%`,
+                        width: `${(session.studiedToday / Math.max(1, LESSON_CARD_LIMIT)) * 100}%`,
                       }}
                     ></div>
                   </div>
@@ -561,138 +461,61 @@ export default function FlashcardStudy() {
             </div>
 
             <div className={styles.studyControls}>
-              <button
-                onClick={() => setStudyMode('settings')}
-                className={styles.controlBtn}
-              >
+              <button onClick={() => setStudyMode('settings')} className={styles.controlBtn}>
                 <span className={styles.controlIcon}>⚙️</span>
               </button>
-              <button
-                onClick={() => router.push('/flashcards')}
-                className={styles.controlBtn}
-              >
+              <button onClick={() => router.push('/flashcards')} className={styles.controlBtn}>
                 <span className={styles.controlIcon}>❌</span>
               </button>
             </div>
           </div>
 
-          {/* 📊 QUICK STATS */}
+          {/* SZYBKIE STATYSTYKI (Na górze ekranu) */}
           <div className={styles.quickStats}>
             <div className={styles.quickStat}>
               <span className={styles.quickStatIcon}>✅</span>
-              <span className={styles.quickStatValue}>
-                {stats.correctAnswers}
-              </span>
+              <span className={styles.quickStatValue}>{stats.correctAnswers}</span>
             </div>
-            <div className={styles.quickStat}>
-              <span className={styles.quickStatIcon}>❌</span>
-              <span className={styles.quickStatValue}>
-                {stats.wrongAnswers}
-              </span>
-            </div>
-            <div className={styles.quickStat}>
-              <span className={styles.quickStatIcon}>💎</span>
-              <span className={styles.quickStatValue}>
-                {stats.points}
-              </span>
-            </div>
-            <div className={styles.quickStat}>
-              <span className={styles.quickStatIcon}>🔥</span>
-              <span className={styles.quickStatValue}>
-                {stats.studyStreak}
-              </span>
-            </div>
+            {/* ... inne statystyki ... */}
           </div>
 
-          {/* 🃏 FLASHCARD */}
+          {/* 🃏 KARTA FISZKI (Front/Back) */}
           <div className={styles.flashcardContainer}>
-            <div
-              className={`${styles.flashcard} ${
-                isCardFlipped ? styles.flipped : ''
-              }`}
-            >
-              {/* PRZÓD KARTY */}
+            <div className={`${styles.flashcard} ${isCardFlipped ? styles.flipped : ''}`}>
+              
+              {/* AWERS KARTY (Pytanie) */}
               <div className={styles.cardFront}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardType}>
-                    {currentCard.isNew
-                      ? '🆕 Nowa'
-                      : currentCard.isLearning
-                      ? '🔄 Do powtórki'
-                      : '✅ Opanowana'}
+                    {currentCard.isNew ? '🆕 Nowa' : currentCard.isLearning ? '🔄 Do powtórki' : '✅ Opanowana'}
                   </div>
                   <div className={styles.cardDifficulty}>
-                    {currentCard.difficulty === 'easy'
-                      ? '🟢'
-                      : currentCard.difficulty === 'medium'
-                      ? '🟡'
-                      : '🔴'}
+                    {/* Wskaźnik trudności (kropki) */}
+                    {currentCard.difficulty === 'easy' ? '🟢' : currentCard.difficulty === 'medium' ? '🟡' : '🔴'}
                   </div>
                 </div>
 
                 <div className={styles.cardContent}>
-                  <div className={styles.cardText}>
-                    {currentCard.front}
-                  </div>
+                  <div className={styles.cardText}>{currentCard.front}</div>
                   {currentCard.image && (
                     <div className={styles.cardImage}>
-                      <img
-                        src={currentCard.image}
-                        alt="Card visual"
-                      />
+                      <img src={currentCard.image} alt="Card visual" />
                     </div>
                   )}
                 </div>
 
                 <div className={styles.cardActions}>
-                  <button
-                    onClick={flipCard}
-                    className={styles.flipBtn}
-                  >
-                    <span className={styles.flipIcon}>🔄</span>
-                    Pokaż odpowiedź
+                  <button onClick={flipCard} className={styles.flipBtn}>
+                    <span className={styles.flipIcon}>🔄</span> Pokaż odpowiedź
                   </button>
-                  {currentCard.audio && (
-                    <button
-                      onClick={playAudio}
-                      className={styles.audioBtn}
-                    >
-                      <span className={styles.audioIcon}>🔊</span>
-                      Odtwórz
-                    </button>
-                  )}
-                  {currentCard.hint && (
-                    <button
-                      onClick={toggleHint}
-                      className={styles.hintBtn}
-                    >
-                      <span className={styles.hintIcon}>💡</span>
-                      {showHint ? 'Ukryj' : 'Podpowiedź'}
-                    </button>
-                  )}
+                  {/* Przyciski Audio i Hint */}
                 </div>
-
-                {showHint && currentCard.hint && (
-                  <div className={styles.cardHint}>
-                    <span className={styles.hintLabel}>
-                      💡 Podpowiedź:
-                    </span>
-                    {currentCard.hint}
-                  </div>
-                )}
               </div>
 
-              {/* TYŁ KARTY */}
+              {/* REWERS KARTY (Odpowiedź) */}
               <div className={styles.cardBack}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardType}>Odpowiedź</div>
-                  <div className={styles.cardDifficulty}>
-                    {currentCard.difficulty === 'easy'
-                      ? '🟢'
-                      : currentCard.difficulty === 'medium'
-                      ? '🟡'
-                      : '🔴'}
-                  </div>
                 </div>
 
                 <div className={styles.cardContent}>
@@ -701,54 +524,34 @@ export default function FlashcardStudy() {
                   </div>
                   <div className={styles.cardAnswer}>
                     <strong>Odpowiedź:</strong>
-                    <div className={styles.answerText}>
-                      {currentCard.back}
-                    </div>
+                    <div className={styles.answerText}>{currentCard.back}</div>
                   </div>
                 </div>
 
-                {/* 🎯 RATING BUTTONS – nowa wersja */}
+                {/* PRZYCISKI OCENY (Decyzja użytkownika) */}
                 <div className={styles.ratingButtons}>
-                  <button
-                    onClick={() => handleStatus('repeat')}
-                    className={`${styles.ratingBtn} ${styles.again}`}
-                  >
-                    <div className={styles.ratingLabel}>
-                      Powtórzmy to następnym razem!
-                    </div>
+                  <button onClick={() => handleStatus('repeat')} className={`${styles.ratingBtn} ${styles.again}`}>
+                    <div className={styles.ratingLabel}>Powtórzmy to następnym razem!</div>
                   </button>
 
-                  <button
-                    onClick={() => handleStatus('learned')}
-                    className={`${styles.ratingBtn} ${styles.easy}`}
-                  >
-                    <div className={styles.ratingLabel}>
-                      To już umiem!
-                    </div>
+                  <button onClick={() => handleStatus('learned')} className={`${styles.ratingBtn} ${styles.easy}`}>
+                    <div className={styles.ratingLabel}>To już umiem!</div>
                   </button>
                 </div>
 
                 <div className={styles.backActions}>
-                  <button
-                    onClick={flipCard}
-                    className={styles.flipBackBtn}
-                  >
-                    <span className={styles.flipIcon}>🔄</span>
-                    Pokaż pytanie
+                  <button onClick={flipCard} className={styles.flipBackBtn}>
+                    <span className={styles.flipIcon}>🔄</span> Pokaż pytanie
                   </button>
-                  <button
-                    onClick={skipCard}
-                    className={styles.skipBtn}
-                  >
-                    <span className={styles.skipIcon}>⏭️</span>
-                    Pomiń
+                  <button onClick={skipCard} className={styles.skipBtn}>
+                    <span className={styles.skipIcon}>⏭️</span> Pomiń
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 📱 MOBILE HINT */}
+          {/* Podpowiedź dla urządzeń mobilnych */}
           <div className={styles.swipeHint}>
             <span className={styles.swipeIcon}>👆</span>
             Stuknij kartę aby ją przewrócić

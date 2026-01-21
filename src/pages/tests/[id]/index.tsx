@@ -1,3 +1,13 @@
+/**
+ * @file TestSessionPage.tsx
+ * @brief Widok sesji testowej typu "Wpisz brakujące słowo" (Fill-in-the-gap).
+ *
+ * Komponent ten realizuje bardziej rygorystyczną formę sprawdzania wiedzy niż Quiz:
+ * 1. **Brak podpowiedzi A/B/C/D:** Użytkownik musi znać pisownię.
+ * 2. **Weryfikacja Server-Side:** Odpowiedź jest wysyłana do API, które sprawdza poprawność (fuzzy matching).
+ * 3. **Presja czasu:** Globalny licznik czasu dla całego testu.
+ */
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -5,14 +15,21 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import styles from '@/styles/TestSession.module.css';
 
+/**
+ * Struktura szablonu pytania pobieranego z API.
+ */
 type TestTemplateDTO = {
   id: number;
-  sentence: string;
-  polishWord: string | null;
+  sentence: string; // Zdanie z luką (np. "I ___ to the cinema.")
+  polishWord: string | null; // Tłumaczenie brakującego słowa (np. "chodzę")
 };
 
+// Adres API (w produkcji powinien być w zmiennych środowiskowych)
 const API_BASE = 'http://localhost:4000';
 
+/**
+ * Formatuje sekundy do formatu MM:SS lub HH:MM:SS.
+ */
 const formatTime = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -22,38 +39,49 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+/**
+ * Komponent TestSessionPage.
+ *
+ * @returns {JSX.Element} Interfejs testu pisemnego.
+ */
 export default function TestSessionPage() {
   const router = useRouter();
 
+  // --- STANY DANYCH ---
   const [templates, setTemplates] = useState<TestTemplateDTO[]>([]);
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useState(0); // Indeks aktualnego pytania
 
+  // --- STANY UI ---
   const [showInstructions, setShowInstructions] = useState(true);
   const [isStarted, setIsStarted] = useState(false);
-
   const [timeLeft, setTimeLeft] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // --- STANY INTERAKCJI ---
   const [userAnswer, setUserAnswer] = useState('');
+  // Stan feedbacku: null (brak), true (poprawna), false (błędna)
   const [lastCorrect, setLastCorrect] = useState<null | boolean>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // ✅ podsumowanie
+  // --- STATYSTYKI SESJI ---
   const [correctCount, setCorrectCount] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
 
+  // Parsowanie ID kategorii z URL
   const categoryId = useMemo(() => {
     const raw = router.query.id;
     const n = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN;
     return Number.isFinite(n) ? n : null;
   }, [router.query.id]);
 
+  // Helpery nawigacyjne
   const total = templates.length;
   const current = idx < total ? templates[idx] : null;
   const finished = isStarted && total > 0 && idx >= total;
 
-  // Pobieranie pytań z backendu
+  /**
+   * Efekt 1: Pobieranie pytań z backendu po załadowaniu ID kategorii.
+   */
   useEffect(() => {
     if (!router.isReady) return;
     if (!categoryId) return;
@@ -66,6 +94,7 @@ export default function TestSessionPage() {
 
     setLoadError(null);
 
+    // Pobranie szablonów testu (pytań)
     fetch(`${API_BASE}/api/tests/templates?categoryId=${categoryId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -79,7 +108,7 @@ export default function TestSessionPage() {
         setTemplates(list);
         setIdx(0);
 
-        // reset licznika przy nowym teście
+        // Reset stanu przy nowym zestawie
         setCorrectCount(0);
         setWrongCount(0);
         setLastCorrect(null);
@@ -88,7 +117,10 @@ export default function TestSessionPage() {
       .catch((e) => setLoadError(String(e?.message || e)));
   }, [router.isReady, categoryId]);
 
-  // Timer
+  /**
+   * Efekt 2: Globalny Timer.
+   * Odlicza czas tylko gdy test jest aktywny (`isStarted`).
+   */
   useEffect(() => {
     if (!isStarted) return;
     if (timeLeft <= 0) return;
@@ -97,15 +129,18 @@ export default function TestSessionPage() {
     return () => clearInterval(t);
   }, [isStarted, timeLeft]);
 
+  /**
+   * Uruchamia test, ukrywa instrukcje i ustawia czas.
+   */
   const startTest = () => {
     setShowInstructions(false);
     setIsStarted(true);
 
-    // ~25 sekund na pytanie, min 60s
+    // Algorytm czasu: ~25 sekund na pytanie, ale minimum 60s na cały test
     const seconds = Math.max(60, templates.length * 25);
     setTimeLeft(seconds);
 
-    // reset licznika przy starcie (na wypadek cofnięcia się do instrukcji)
+    // Reset liczników
     setCorrectCount(0);
     setWrongCount(0);
     setLastCorrect(null);
@@ -113,7 +148,9 @@ export default function TestSessionPage() {
     setIdx(0);
   };
 
-  // Ekran instrukcji
+  // --- RENDEROWANIE EKRANÓW (State Machine) ---
+
+  // 1. Ekran Instrukcji (Start Screen)
   if (showInstructions) {
     return (
       <Layout>
@@ -183,7 +220,7 @@ export default function TestSessionPage() {
     );
   }
 
-  // Loading
+  // 2. Loading State (w trakcie pobierania danych)
   if (loadError) {
     return (
       <Layout>
@@ -210,7 +247,7 @@ export default function TestSessionPage() {
     );
   }
 
-  // Koniec czasu
+  // 3. Koniec Czasu (Time's Up)
   if (timeLeft === 0 && !finished) {
     return (
       <Layout>
@@ -237,7 +274,7 @@ export default function TestSessionPage() {
     );
   }
 
-  // Koniec testu
+  // 4. Ekran Końcowy (Finished)
   if (finished) {
     return (
       <Layout>
@@ -264,11 +301,13 @@ export default function TestSessionPage() {
     );
   }
 
-  // Widok główny testu
+  // 5. Główny Widok Testu (Active Question)
   return (
     <Layout>
       <div className={styles.page}>
         <div className={styles.testContainer}>
+          
+          {/* Header Pytania */}
           <div className={styles.testHeader}>
             <div className={styles.testInfo}>
               <h1 className={styles.testTitle}>
@@ -281,6 +320,7 @@ export default function TestSessionPage() {
             </div>
 
             <div className={styles.testControls}>
+              {/* Timer zmienia kolor na czerwony poniżej 30s */}
               <div className={`${styles.sectionTimer} ${timeLeft < 30 ? styles.warning : ''}`}>
                 <span className={styles.timerIcon}>⏱️</span>
                 {formatTime(timeLeft)}
@@ -302,6 +342,7 @@ export default function TestSessionPage() {
               <h2 className={styles.questionText}>{current?.sentence}</h2>
             </div>
 
+            {/* Formularz odpowiedzi */}
             <div className={styles.answerInterface}>
               <form
                 onSubmit={async (e) => {
@@ -316,6 +357,7 @@ export default function TestSessionPage() {
 
                   setIsSubmitting(true);
                   try {
+                    // Weryfikacja odpowiedzi przez API
                     const resp = await fetch(`${API_BASE}/api/tests/submit`, {
                       method: 'POST',
                       headers: {
@@ -332,11 +374,12 @@ export default function TestSessionPage() {
                     if (!resp.ok) throw new Error(data?.error || 'Nie udało się zapisać odpowiedzi.');
 
                     const ok = Boolean(data?.isCorrect);
-                    setLastCorrect(ok);
+                    setLastCorrect(ok); // Pokazuje feedback wizualny
 
                     if (ok) setCorrectCount((p) => p + 1);
                     else setWrongCount((p) => p + 1);
 
+                    // Opóźnienie przed przejściem do następnego pytania (UX)
                     setTimeout(() => {
                       setLastCorrect(null);
                       setUserAnswer('');
@@ -362,6 +405,7 @@ export default function TestSessionPage() {
                 </button>
               </form>
 
+              {/* Feedback wizualny po zatwierdzeniu */}
               {lastCorrect !== null && (
                 <div className={lastCorrect ? styles.correct : styles.wrong}>
                   {lastCorrect ? '✅ Poprawna odpowiedź' : '❌ Błędna odpowiedź'}

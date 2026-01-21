@@ -1,26 +1,42 @@
-// src/pages/profile.tsx
+/**
+ * @file profile.tsx
+ * @brief Strona profilu użytkownika (Personal Dashboard).
+ *
+ * Wyświetla szczegółowe informacje o użytkowniku, statystyki postępów oraz historię aktywności.
+ * Komponent ten:
+ * 1. Weryfikuje token JWT przy wejściu.
+ * 2. Pobiera dane użytkownika z `/auth/me`.
+ * 3. Renderuje sekcje: Nagłówek profilu, Statystyki (KPI), Lista kursów (Placeholder), Aktywność (Placeholder).
+ */
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import ProfileHeader from '../components/ProfileHeader';
 import ProfileStats from '../components/ProfileStats';
-import UserCourses from '../components/UserCourses';
-import ActivityFeed from '../components/ActivityFeed';
+import UserCourses from '../components/UserCourses'; // Nieużywany import (do przyszłego wykorzystania)
+import ActivityFeed from '../components/ActivityFeed'; // Nieużywany import
 import { apiRequest } from '../lib/api';
 
 export default function ProfilePage() {
   const router = useRouter();
 
+  // --- STANY ---
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState(false); // Prosta flaga błędu
+  
+  // Flaga błędu autoryzacji (np. wygasły token)
+  const [authError, setAuthError] = useState(false); 
 
+  /**
+   * Efekt pobierania danych profilowych.
+   */
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
 
+      // Szybkie wyjście, jeśli brak tokena w przeglądarce
       if (!token) {
         setAuthError(true);
         setLoading(false);
@@ -30,24 +46,25 @@ export default function ProfilePage() {
       try {
         setLoading(true);
 
-        // Pobieramy dane użytkownika
+        // 1. Pobranie danych użytkownika
         const userData = await apiRequest<any>('/auth/me', 'GET', undefined, token);
         setUser(userData);
 
-        // Ustawiamy statystyki (z bezpiecznymi wartościami domyślnymi)
+        // 2. Przygotowanie obiektu statystyk
+        // W przyszłości te dane mogą pochodzić z osobnego endpointu `/stats`
         setStats({
           totalPoints: userData.points || 0,
           currentStreak: userData.streak_days || 1,
-          longestStreak: userData.streak_days || 1,
+          longestStreak: userData.streak_days || 1, // Placeholder
           todayLessons: userData.today_lessons || 0,
-          dailyGoal: 5,
+          dailyGoal: 5, // Hardcoded goal
           totalHours: 0, // Placeholder
           activeCourses: [] // Placeholder
         });
 
       } catch (err) {
         console.error("Błąd pobierania profilu:", err);
-        // Jeśli błąd sugeruje brak autoryzacji, pokazujemy ekran logowania
+        // Błąd API (np. 401 Unauthorized) traktujemy jako błąd autoryzacji
         setAuthError(true);
       } finally {
         setLoading(false);
@@ -68,7 +85,8 @@ export default function ProfilePage() {
     );
   }
 
-  // --- EKRAN BRAKU AUTORYZACJI (Zamiast brzydkiego błędu) ---
+  // --- EKRAN BŁĘDU AUTORYZACJI ---
+  // Wyświetlany zamiast przekierowania, aby dać użytkownikowi informację zwrotną
   if (authError || !user) {
     return (
       <Layout>
@@ -94,8 +112,8 @@ export default function ProfilePage() {
               color: 'white', 
               border: 'none', 
               borderRadius: '8px', 
-              cursor: 'pointer',
-              fontWeight: '600',
+              cursor: 'pointer', 
+              fontWeight: '600', 
               fontSize: '16px'
             }}
           >
@@ -106,16 +124,17 @@ export default function ProfilePage() {
     );
   }
 
-  // --- GŁÓWNY WIDOK PROFILU ---
+  // --- GŁÓWNY WIDOK ---
   return (
     <Layout>
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
         
+        {/* Nagłówek profilu z awatarem i podstawowymi danymi */}
         <ProfileHeader
           user={{
             id: user.id,
             username: user.username,
-            displayName: user.username,
+            displayName: user.username, // Fallback do username
             email: user.email,
             avatar: user.avatar || '👤',
             bio: 'Użytkownik LangLearn',
@@ -125,9 +144,10 @@ export default function ProfilePage() {
           }}
         />
 
+        {/* Grid layout dla treści profilu */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
           
-          {/* LEWA KOLUMNA */}
+          {/* LEWA KOLUMNA: Statystyki i Kursy */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {stats && (
               <ProfileStats
@@ -140,8 +160,8 @@ export default function ProfilePage() {
                 activeCourses={stats.activeCourses || 0}
               />
             )}
-             
-             {/* Placeholder Kursów */}
+              
+             {/* Sekcja Kursów (Placeholder) */}
              <div style={{ 
                 padding: '30px', 
                 background: '#fff', 
@@ -168,7 +188,7 @@ export default function ProfilePage() {
              </div>
           </div>
 
-          {/* PRAWA KOLUMNA */}
+          {/* PRAWA KOLUMNA: Aktywność (Placeholder) */}
           <div>
              <div style={{ 
                 padding: '30px', 

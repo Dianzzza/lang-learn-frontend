@@ -1,24 +1,46 @@
-// src/pages/study/index.tsx
+/**
+ * @file StudyHub.tsx
+ * @brief Centrum nauki (Landing Page sekcji edukacyjnej).
+ *
+ * Komponent ten pełni rolę "zwrotnicy", pozwalając użytkownikowi wybrać preferowany tryb nauki:
+ * 1. **Fiszki:** System powtórek interwałowych (SRS).
+ * 2. **Gramatyka:** Lekcje teoretyczne i ćwiczenia.
+ * 3. **Quizy:** Testy sprawdzające wiedzę ogólną.
+ *
+ * Wykorzystuje CSS Variables (`--mode-color`) do dynamicznego stylowania kart
+ * w zależności od wybranego trybu (np. Fioletowy dla fiszek, Zielony dla gramatyki).
+ */
+
 'use client';
 
 import Link from 'next/link';
 import Layout from '@/components/Layout';
 import styles from '@/styles/StudyHub.module.css';
 
+/**
+ * Konfiguracja trybu nauki wyświetlanego jako karta.
+ */
 interface StudyMode {
   id: number;
   title: string;
   description: string;
-  icon: string;
-  color: string;
-  href: string;
-  badge?: string;
-  count: number;
-  progress: number;
+  icon: string; // Emoji lub URL ikony
+  color: string; // Kolor przewodni (używany jako zmienna CSS)
+  href: string; // Link docelowy
+  badge?: string; // Opcjonalna etykieta (np. "Popularne")
+  count: number; // Liczba dostępnych materiałów
+  progress: number; // Postęp użytkownika w danej sekcji (%)
 }
 
+/**
+ * Komponent StudyHub.
+ *
+ * @returns {JSX.Element} Grid z kartami wyboru trybu nauki.
+ */
 export default function StudyHub() {
-  // 🎯 3 GŁÓWNE TRYBY NAUKI
+  
+  // Definicja dostępnych modułów edukacyjnych
+  // W przyszłości te dane (szczególnie progress i count) mogą pochodzić z API
   const studyModes: StudyMode[] = [
     {
       id: 1,
@@ -58,7 +80,8 @@ export default function StudyHub() {
     <Layout>
       <div className={styles.page}>
         <div className={styles.container}>
-          {/* 🎯 PAGE HEADER */}
+          
+          {/* Nagłówek sekcji */}
           <div className={styles.pageHeader}>
             <h1 className={styles.pageTitle}>
               <span className={styles.titleIcon}>🎓</span>
@@ -69,26 +92,29 @@ export default function StudyHub() {
             </p>
           </div>
 
-          {/* 🎮 STUDY MODES GRID */}
+          {/* Grid kart trybów nauki */}
           <div
             className={styles.studyModesGrid}
             style={{
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(3, 1fr)', // Wymuszenie 3 kolumn
             }}
           >
             {studyModes.map((mode, index) => (
               <Link
                 key={mode.id}
                 href={mode.href}
+                // Link jako wrapper umożliwia klikalność całej karty
               >
                 <div
                   className={styles.studyModeCard}
+                  // Przekazanie koloru jako zmiennej CSS i opóźnienie animacji
                   style={{
                     '--mode-color': mode.color,
                     animationDelay: `${index * 0.1}s`,
                   } as React.CSSProperties & { '--mode-color': string }}
                 >
-                  {/* 🏷️ BADGE */}
+                  
+                  {/* Badge (np. "Popularne") */}
                   {mode.badge && (
                     <div className={styles.newBadge}>
                       <span className={styles.newIcon}>✨</span>
@@ -96,7 +122,7 @@ export default function StudyHub() {
                     </div>
                   )}
 
-                  {/* 🎨 MODE HEADER */}
+                  {/* Nagłówek karty z ikoną */}
                   <div className={styles.modeHeader}>
                     <div
                       className={styles.modeIcon}
@@ -107,13 +133,13 @@ export default function StudyHub() {
                     <div className={styles.modeCount}>{mode.count}+</div>
                   </div>
 
-                  {/* 📝 MODE CONTENT */}
+                  {/* Treść karty */}
                   <div className={styles.modeContent}>
                     <h2 className={styles.modeTitle}>{mode.title}</h2>
                     <p className={styles.modeDescription}>{mode.description}</p>
                   </div>
 
-                  {/* 📈 MODE PROGRESS */}
+                  {/* Pasek postępu */}
                   {mode.progress > 0 && (
                     <div className={styles.modeProgress}>
                       <div className={styles.progressHeader}>
@@ -125,14 +151,14 @@ export default function StudyHub() {
                           className={styles.progressFill}
                           style={{
                             width: `${mode.progress}%`,
-                            backgroundColor: mode.color,
+                            backgroundColor: mode.color, // Spójność kolorystyczna
                           }}
                         />
                       </div>
                     </div>
                   )}
 
-                  {/* 🎮 MODE ACTION */}
+                  {/* Przycisk akcji (Call to Action) */}
                   <div
                     className={styles.modeAction}
                     style={{

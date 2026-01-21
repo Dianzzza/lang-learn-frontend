@@ -1,35 +1,73 @@
+/**
+ * @file SecuritySettings.tsx
+ * @brief Komponent zarządzania bezpieczeństwem konta (zmiana hasła).
+ *
+ * Umożliwia użytkownikowi zmianę hasła z uwzględnieniem weryfikacji aktualnego hasła.
+ * Zawiera wbudowany miernik siły hasła (Password Strength Meter) oraz wizualne wskaźniki bezpieczeństwa.
+ */
+
 'use client';
 
 import { useState } from 'react';
 import styles from '../styles/SettingsForm.module.css';
 import { changePassword } from '../lib/api';
 
+/**
+ * Interfejs podstawowych danych użytkownika.
+ */
 interface User {
   id: number;
   username: string;
   email: string;
 }
 
+/**
+ * Właściwości komponentu SecuritySettings.
+ */
 interface SecuritySettingsProps {
   user: User | null;
+  /** Callback wywoływany po pomyślnej zmianie hasła */
   onSuccess?: () => void;
 }
 
+/**
+ * Komponent SecuritySettings.
+ *
+ * Obsługuje formularz zmiany hasła. Kluczowe funkcje:
+ * 1. Obliczanie siły hasła w czasie rzeczywistym (regex).
+ * 2. Walidacja zgodności haseł (nowe vs potwierdzenie).
+ * 3. Zabezpieczenie przed użyciem starego hasła jako nowego.
+ *
+ * @param {SecuritySettingsProps} props - Właściwości komponentu.
+ * @returns {JSX.Element} Panel ustawień bezpieczeństwa.
+ */
 export default function SecuritySettings({ user, onSuccess }: SecuritySettingsProps) {
+  // --- STANY UI ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Formy
+  // --- STANY FORMULARZA ---
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Walidacja
+  // --- STANY WALIDACJI I UX ---
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+  /** Steruje widocznością znaków w inputach (type="text" vs "password") */
   const [showPasswords, setShowPasswords] = useState(false);
 
-  // Oblicz siłę hasła
+  /**
+   * Ocenia siłę hasła na podstawie długości i znaków specjalnych.
+   *
+   * Reguły:
+   * - Weak: < 6 znaków.
+   * - Medium: < 10 znaków.
+   * - Strong: > 10 znaków ORAZ zawiera Wielką literę, Cyfrę i Znak specjalny.
+   *
+   * @param {string} pwd - Hasło do oceny.
+   * @returns {'weak' | 'medium' | 'strong'} Poziom siły hasła.
+   */
   const calculatePasswordStrength = (pwd: string) => {
     if (pwd.length < 6) return 'weak';
     if (pwd.length < 10) return 'medium';
@@ -37,33 +75,44 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
     return 'medium';
   };
 
+  /**
+   * Obsługa wpisywania nowego hasła.
+   * Aktualizuje stan hasła oraz natychmiast przelicza jego siłę.
+   */
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const pwd = e.target.value;
     setNewPassword(pwd);
     setPasswordStrength(calculatePasswordStrength(pwd));
   };
 
+  /**
+   * Obsługa wysyłki formularza.
+   * Przeprowadza szereg walidacji po stronie klienta przed wysłaniem zapytania do API.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
 
-    // Walidacja
+    // 1. Sprawdzenie wypełnienia pól
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError('Wszystkie pola są wymagane');
       return;
     }
 
+    // 2. Logika biznesowa: Nowe hasło musi być inne niż stare
     if (currentPassword === newPassword) {
       setError('Nowe hasło nie może być takie samo jak stare');
       return;
     }
 
+    // 3. Walidacja minimalnej długości
     if (newPassword.length < 6) {
       setError('Nowe hasło musi mieć co najmniej 6 znaków');
       return;
     }
 
+    // 4. Sprawdzenie zgodności powtórzonego hasła
     if (newPassword !== confirmPassword) {
       setError('Hasła nie są identyczne');
       return;
@@ -77,9 +126,11 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
         throw new Error('Brak tokena autoryzacji');
       }
 
+      // Wywołanie API zmiany hasła
       await changePassword(token, currentPassword, newPassword);
 
       setSuccess(true);
+      // Reset formularza po sukcesie
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -99,29 +150,23 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
     }
   };
 
+  /** Helper zwracający kolor paska siły hasła */
   const getPasswordStrengthColor = () => {
     switch (passwordStrength) {
-      case 'weak':
-        return '#ff6b6b';
-      case 'medium':
-        return '#ffd93d';
-      case 'strong':
-        return '#51cf66';
-      default:
-        return '#ddd';
+      case 'weak': return '#ff6b6b';    // Czerwony
+      case 'medium': return '#ffd93d';  // Żółty
+      case 'strong': return '#51cf66';  // Zielony
+      default: return '#ddd';
     }
   };
 
+  /** Helper zwracający tekstową etykietę siły hasła */
   const getPasswordStrengthLabel = () => {
     switch (passwordStrength) {
-      case 'weak':
-        return 'Słabe';
-      case 'medium':
-        return 'Średnie';
-      case 'strong':
-        return 'Silne';
-      default:
-        return '';
+      case 'weak': return 'Słabe';
+      case 'medium': return 'Średnie';
+      case 'strong': return 'Silne';
+      default: return '';
     }
   };
 
@@ -132,7 +177,7 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
         <p>Zmień hasło i zarządzaj bezpieczeństwem konta</p>
       </div>
 
-      {/* Informacja o koncie */}
+      {/* Informacja o wylogowaniu sesji */}
       <div 
         className={styles.infoBox}
         style={{
@@ -149,10 +194,9 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
         </p>
       </div>
 
-      {/* Formularz zmiany hasła */}
       <form onSubmit={handleSubmit} className={styles.form}>
         
-        {/* Bieżące hasło */}
+        {/* Pole: Bieżące hasło */}
         <div className={styles.formGroup}>
           <label htmlFor="currentPassword" className={styles.label}>
             Bieżące hasło
@@ -170,7 +214,7 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
           </div>
         </div>
 
-        {/* Nowe hasło */}
+        {/* Pole: Nowe hasło */}
         <div className={styles.formGroup}>
           <label htmlFor="newPassword" className={styles.label}>
             Nowe hasło
@@ -187,7 +231,7 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
             />
           </div>
 
-          {/* Siła hasła */}
+          {/* Wizualizacja siły hasła (Pasek postępu) */}
           {newPassword && (
             <div style={{ marginTop: '8px' }}>
               <div
@@ -219,7 +263,7 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
           </small>
         </div>
 
-        {/* Potwierdzenie hasła */}
+        {/* Pole: Potwierdź hasło */}
         <div className={styles.formGroup}>
           <label htmlFor="confirmPassword" className={styles.label}>
             Potwierdzenie hasła
@@ -237,7 +281,7 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
           </div>
         </div>
 
-        {/* Pokaż hasła */}
+        {/* Checkbox: Pokaż hasła */}
         <div className={styles.checkboxGroup}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
             <input
@@ -249,36 +293,6 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
             <span>Pokaż hasła</span>
           </label>
         </div>
-
-        {/* Walidacja - potwierdzenie pasuje */}
-        {newPassword && confirmPassword && (
-          <div
-            style={{
-              padding: '12px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              backgroundColor: newPassword === confirmPassword ? '#efe' : '#fee',
-              border: `1px solid ${newPassword === confirmPassword ? '#3c3' : '#fcc'}`,
-              color: newPassword === confirmPassword ? '#3c3' : '#c33',
-              fontSize: '14px'
-            }}
-          >
-            {newPassword === confirmPassword ? '✅ Hasła są identyczne' : '❌ Hasła się różnią'}
-          </div>
-        )}
-
-        {/* Komunikaty */}
-        {error && (
-          <div className={styles.alert} style={{ backgroundColor: '#fee', color: '#c33' }}>
-            ❌ {error}
-          </div>
-        )}
-        
-        {success && (
-          <div className={styles.alert} style={{ backgroundColor: '#efe', color: '#3c3' }}>
-            ✅ Hasło zmienione pomyślnie!
-          </div>
-        )}
 
         {/* Przycisk Submit */}
         <div className={styles.buttonGroup}>
@@ -292,7 +306,7 @@ export default function SecuritySettings({ user, onSuccess }: SecuritySettingsPr
         </div>
       </form>
 
-      {/* Wskazówki bezpieczeństwa */}
+      {/* Box z poradami bezpieczeństwa */}
       <div 
         className={styles.tipsBox}
         style={{

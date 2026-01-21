@@ -1,3 +1,12 @@
+/**
+ * @file AuthModal.tsx
+ * @brief Komponent modala obsługujący pełny proces uwierzytelniania.
+ *
+ * Plik ten zawiera główny kontener (wrapper) dla formularzy autoryzacyjnych.
+ * Zarządza on stanem wyświetlania (Login vs Register vs Forgot Password)
+ * oraz logiką interfejsu (zamykanie na ESC, blokada scrollowania tła).
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,37 +16,84 @@ import ForgotPasswordForm from './ForgotPasswordForm';
 import ResetPasswordForm from './ResetPasswordForm';
 import styles from '../styles/AuthModal.module.css';
 
-// jeśli masz api.ts w lib/, to importuj stamtąd:
+// import API helpera
 import { apiRequest } from '../lib/api';
 
+/**
+ * Interfejs reprezentujący dane użytkownika zwracane przez API
+ * po pomyślnym zalogowaniu lub rejestracji.
+ */
 interface UserData {
+  /** Unikalny identyfikator użytkownika w bazie danych */
   id: number;
+  /** Nazwa użytkownika (login) */
   username: string;
+  /** Adres e-mail użytkownika */
   email: string;
+  /** Aktualna liczba punktów (opcjonalne) */
   points?: number;
+  /** Liczba dni nauki z rzędu (opcjonalne) */
   streak_days?: number;
 }
 
+/**
+ * Typ wyliczeniowy określający aktualny widok wewnątrz modala.
+ *
+ * - `login`: Formularz logowania.
+ * - `register`: Formularz rejestracji.
+ * - `forgot-password`: Formularz prośby o reset hasła.
+ * - `reset-sent`: Widok potwierdzenia wysłania maila.
+ * - `reset-password`: Formularz ustawiania nowego hasła.
+ */
 type AuthMode = 'login' | 'register' | 'forgot-password' | 'reset-sent' | 'reset-password';
 
+/**
+ * Właściwości (Props) przyjmowane przez komponent AuthModal.
+ */
 interface AuthModalProps {
+  /** Flaga sterująca widocznością modala */
   isOpen: boolean;
+  /** Funkcja wywoływana przy żądaniu zamknięcia modala (np. klik w tło, ESC) */
   onClose: () => void;
+  /**
+   * Początkowy tryb formularza po otwarciu.
+   * @default 'login'
+   */
   initialMode?: AuthMode;
 }
 
+/**
+ * Główny komponent modala autoryzacji.
+ *
+ * Renderuje odpowiedni pod-komponent (formularz) w zależności od stanu `mode`.
+ * Obsługuje również globalne zdarzenia UI, takie jak blokowanie przewijania strony (`body scroll lock`).
+ *
+ * @param {AuthModalProps} props - Właściwości komponentu.
+ * @returns {JSX.Element | null} Wyrenderowany modal lub `null`, jeśli `isOpen` jest false.
+ */
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
+  // --- STANY ---
   const [mode, setMode] = useState<AuthMode>(initialMode);
+  /** Przechowuje email do wyświetlenia w komunikacie sukcesu resetowania hasła */
   const [resetEmail, setResetEmail] = useState('');
+  /** Globalny stan ładowania dla operacji asynchronicznych w modalu */
   const [isLoading, setIsLoading] = useState(false);
 
-  // blokuje scrollowanie tła
+  // --- EFEKTY UBOCZNE ---
+
+  /**
+   * @brief Blokuje przewijanie strony (`document.body`), gdy modal jest otwarty.
+   * Przywraca domyślny styl po zamknięciu modala.
+   */
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
-  // ESC zamyka modal
+  /**
+   * @brief Obsługa zamykania modala klawiszem ESC.
+   * Dodaje nasłuchiwacz zdarzeń `keydown` przy otwarciu i usuwa go przy zamknięciu.
+   */
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -46,10 +102,21 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
+  // --- HANDLERY ---
+
+  /**
+   * Obsługuje kliknięcie w tło (overlay).
+   * Zamyka modal tylko wtedy, gdy kliknięto bezpośrednio w overlay, a nie w jego zawartość.
+   */
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   };
 
+  /**
+   * Zmienia aktualnie wyświetlany formularz.
+   * Czyści stan ładowania przy każdej zmianie widoku.
+   * @param {AuthMode} newMode - Nowy tryb do ustawienia.
+   */
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
     setIsLoading(false);
@@ -59,6 +126,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   // API Handlers
   // =====================
 
+  /**
+   * Obsługuje proces wysyłania prośby o reset hasła.
+   *
+   * 1. Ustawia stan ładowania.
+   * 2. Wysyła żądanie do API `/auth/request-password-reset`.
+   * 3. W przypadku sukcesu przełącza widok na `reset-sent`.
+   * 4. W przypadku błędu wyświetla alert.
+   *
+   * @param {string} email - Adres email podany przez użytkownika.
+   */
   const handleForgotPasswordSubmit = async (email: string): Promise<void> => {
     setIsLoading(true);
     try {
@@ -78,18 +155,24 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     }
   };
 
+  /** Callback wywoływany po sukcesie w komponencie LoginForm */
   const handleLoginSuccess = (userData: UserData) => {
     console.log('Login successful:', userData);
     onClose();
   };
 
+  /** Callback wywoływany po sukcesie w komponencie RegisterForm */
   const handleRegisterSuccess = (userData: UserData) => {
     console.log('Registration successful:', userData);
     onClose();
   };
 
+  // Jeśli modal jest zamknięty, nie renderujemy nic
   if (!isOpen) return null;
 
+  /**
+   * Pomocnicza funkcja zwracająca tytuł modala w zależności od trybu.
+   */
   const getTitle = (): string => {
     switch (mode) {
       case 'login': return 'Zaloguj się';
@@ -115,6 +198,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         <div className={styles.header}>
           <h2 className={styles.title}>{getTitle()}</h2>
 
+          {/* Wyświetlaj zakładki tylko dla ekranów logowania/rejestracji */}
           {(mode === 'login' || mode === 'register') && (
             <div className={styles.modeTabs}>
               <button

@@ -1,5 +1,13 @@
-// pages/grammar/index.tsx
-// HUB GRAMATYCZNY - systematyczna nauka gramatyki
+/**
+ * @file GrammarHub.tsx
+ * @brief Centrum nauki gramatyki (Grammar Dashboard).
+ *
+ * Komponent ten pełni rolę katalogu tematów gramatycznych. Umożliwia:
+ * 1. Przeglądanie dostępnych zagadnień z podziałem na poziomy CEFR (A1-C2).
+ * 2. Filtrowanie tematów według kategorii (np. Czasy, Modalne) i statusu ukończenia.
+ * 3. Śledzenie postępów w nauce gramatyki (Globalny pasek postępu).
+ * 4. Nawigację do konkretnych lekcji teoretycznych lub zestawów ćwiczeń.
+ */
 
 'use client';
 
@@ -8,6 +16,10 @@ import Link from 'next/link';
 import Layout from '@/components/Layout';
 import styles from '@/styles/GrammarHub.module.css';
 
+/**
+ * Struktura danych pojedynczego tematu gramatycznego.
+ * Zawiera metadane dydaktyczne (poziom, kategoria) oraz statystyki postępu.
+ */
 interface GrammarTopic {
   id: number;
   title: string;
@@ -20,17 +32,25 @@ interface GrammarTopic {
   difficulty: 'Łatwe' | 'Średnie' | 'Trudne';
   estimatedTime: string;
   isCompleted: boolean;
-  progress: number; // 0-100%
-  emoji: string;
+  progress: number; // Wartość procentowa (0-100)
+  emoji: string; // Ikona wizualna tematu
   tags: string[];
+  /** Lista tematów, które warto znać przed rozpoczęciem tego modułu (Dependency Graph) */
   prerequisites?: string[];
 }
 
+/**
+ * Komponent GrammarHub.
+ *
+ * @returns {JSX.Element} Panel główny sekcji gramatycznej.
+ */
 export default function GrammarHub() {
+  // --- STANY FILTRÓW ---
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showOnlyIncomplete, setShowOnlyIncomplete] = useState(false);
 
+  // Definicje kategorii do filtrów
   const categories = [
     { value: 'all', label: 'Wszystkie', icon: '📚' },
     { value: 'tenses', label: 'Czasy', icon: '⏰' },
@@ -45,7 +65,8 @@ export default function GrammarHub() {
 
   const levels = ['all', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
-  // 🔒 PRZYKŁADOWE TEMATY GRAMATYCZNE
+  // --- MOCK DATA (TEMATY) ---
+  // W produkcji dane te będą pobierane z API: /grammar/topics
   const grammarTopics: GrammarTopic[] = [
     {
       id: 1,
@@ -100,6 +121,7 @@ export default function GrammarHub() {
     }
   ];
 
+  // --- LOGIKA FILTROWANIA ---
   const filteredTopics = grammarTopics.filter(topic => {
     const matchesLevel = selectedLevel === 'all' || topic.level === selectedLevel;
     const matchesCategory = selectedCategory === 'all' || topic.category === selectedCategory;
@@ -108,6 +130,9 @@ export default function GrammarHub() {
     return matchesLevel && matchesCategory && matchesCompletion;
   });
 
+  // --- HELPERY UI ---
+  
+  /** Zwraca kolor tła dla badge'a poziomu. */
   const getLevelColor = (level: GrammarTopic['level']) => {
     const colors = {
       'A1': 'var(--secondary-green)',
@@ -120,6 +145,7 @@ export default function GrammarHub() {
     return colors[level];
   };
 
+  /** Zwraca kolor paska postępu w zależności od procentowego ukończenia. */
   const getProgressColor = (progress: number) => {
     if (progress === 100) return 'var(--secondary-green)';
     if (progress >= 50) return 'var(--secondary-amber)';
@@ -131,7 +157,7 @@ export default function GrammarHub() {
       <div className={styles.page}>
         <div className={styles.container}>
           
-          {/* 🎯 HEADER */}
+          {/* HEADER SEKCJI */}
           <div className={styles.pageHeader}>
             <h1 className={styles.pageTitle}>
               <span className={styles.titleIcon}>📚</span>
@@ -142,7 +168,7 @@ export default function GrammarHub() {
             </p>
           </div>
 
-          {/* 📊 PROGRESS OVERVIEW */}
+          {/* DASHBOARD POSTĘPU (KPI) */}
           <div className={styles.progressOverview}>
             <div className={styles.overviewCard}>
               <div className={styles.overviewIcon}>✅</div>
@@ -167,9 +193,10 @@ export default function GrammarHub() {
             </div>
           </div>
 
-          {/* 🔍 FILTERS */}
+          {/* FILTRY (Kategoria / Poziom / Status) */}
           <div className={styles.filtersSection}>
             <div className={styles.filterRow}>
+              {/* Filtry Kategorii (Przyciski) */}
               <div className={styles.categoryFilters}>
                 {categories.map(cat => (
                   <button
@@ -185,6 +212,7 @@ export default function GrammarHub() {
             </div>
 
             <div className={styles.additionalFilters}>
+              {/* Filtr Poziomu (Select) */}
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(e.target.value)}
@@ -197,6 +225,7 @@ export default function GrammarHub() {
                 ))}
               </select>
 
+              {/* Checkbox: Tylko nieukończone */}
               <label className={styles.checkboxFilter}>
                 <input
                   type="checkbox"
@@ -209,7 +238,7 @@ export default function GrammarHub() {
             </div>
           </div>
 
-          {/* 📚 TOPICS GRID */}
+          {/* LISTA TEMATÓW (GRID) */}
           <div className={styles.topicsGrid}>
             {filteredTopics.map((topic, index) => (
               <div 
@@ -217,8 +246,7 @@ export default function GrammarHub() {
                 className={styles.topicCard}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                
-                {/* 🎨 TOPIC HEADER */}
+                {/* Karta Tematu: Header */}
                 <div className={styles.topicHeader}>
                   <div className={styles.topicIcon}>
                     {topic.emoji}
@@ -238,16 +266,12 @@ export default function GrammarHub() {
                   </div>
                 </div>
 
-                {/* 📝 TOPIC CONTENT */}
+                {/* Karta Tematu: Content */}
                 <div className={styles.topicContent}>
-                  <h3 className={styles.topicTitle}>
-                    {topic.title}
-                  </h3>
-                  <p className={styles.topicDescription}>
-                    {topic.description}
-                  </p>
+                  <h3 className={styles.topicTitle}>{topic.title}</h3>
+                  <p className={styles.topicDescription}>{topic.description}</p>
 
-                  {/* 📊 TOPIC STATS */}
+                  {/* Statystyki tematu */}
                   <div className={styles.topicStats}>
                     <div className={styles.statItem}>
                       <span className={styles.statIcon}>📖</span>
@@ -267,7 +291,7 @@ export default function GrammarHub() {
                     </div>
                   </div>
 
-                  {/* 🏗️ PREREQUISITES */}
+                  {/* Sekcja Wymagań (Prerequisites) */}
                   {topic.prerequisites && topic.prerequisites.length > 0 && (
                     <div className={styles.prerequisites}>
                       <div className={styles.prerequisitesLabel}>
@@ -285,7 +309,7 @@ export default function GrammarHub() {
                   )}
                 </div>
 
-                {/* 📈 PROGRESS SECTION */}
+                {/* Pasek Postępu Tematu */}
                 <div className={styles.progressSection}>
                   <div className={styles.progressHeader}>
                     <span className={styles.progressLabel}>Postęp:</span>
@@ -307,7 +331,7 @@ export default function GrammarHub() {
                   </div>
                 </div>
 
-                {/* 🎮 TOPIC ACTIONS */}
+                {/* Akcje (Przyciski) */}
                 <div className={styles.topicActions}>
                   <Link 
                     href={`/grammar/${topic.id}`}

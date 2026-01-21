@@ -1,27 +1,62 @@
+/**
+ * @file ProfileStats.tsx
+ * @brief Komponent panelu statystyk użytkownika (Dashboard).
+ *
+ * Wyświetla kluczowe metryki: punkty, dni z rzędu (streak), postęp dzienny oraz
+ * interaktywny wykres słupkowy aktywności z ostatniego tygodnia.
+ * Komponent jest odporny na brak danych (posiada wbudowane wartości domyślne/mock).
+ */
 
 'use client';
 
 import styles from '../styles/ProfileStats.module.css';
 
+/**
+ * Struktura danych dla pojedynczego dnia w wykresie tygodniowym.
+ */
 interface WeeklyData {
+  /** Skrócona nazwa dnia (np. 'Pon', 'Wt') */
   day: string;
+  /** Liczba ukończonych lekcji */
   lessons: number;
+  /** Czas nauki w minutach */
   minutes: number;
 }
 
+/**
+ * Właściwości (Props) komponentu ProfileStats.
+ * Wszystkie pola są opcjonalne, ponieważ komponent posiada "sztywne" wartości domyślne
+ * (fallback), co zapobiega błędom renderowania przy braku danych z API.
+ */
 interface ProfileStatsProps {
+  /** Całkowita liczba punktów */
   totalPoints?: number;
+  /** Aktualna seria dni nauki */
   currentStreak?: number;
+  /** Rekord serii dni nauki */
   longestStreak?: number;
+  /** Dzienny cel (liczba lekcji) */
   dailyGoal?: number;
+  /** Liczba lekcji wykonanych dzisiaj */
   todayLessons?: number;
+  /** Łączny czas nauki w godzinach */
   totalHours?: number;
+  /** Liczba aktywnych kursów */
   activeCourses?: number;
+  /** Dane do wykresu tygodniowego */
   weeklyData?: WeeklyData[];
+  /** Poziom użytkownika */
   level?: number;
+  /** Pozycja w rankingu (np. "#156") */
   rank?: string;
 }
 
+/**
+ * Komponent ProfileStats.
+ *
+ * @param {ProfileStatsProps} props - Dane statystyczne.
+ * @returns {JSX.Element} Grid z kartami statystyk i wykresem.
+ */
 export default function ProfileStats(props: ProfileStatsProps) {
   // 🔒 BEZPIECZNE wartości domyślne - zapobiega undefined errors
   const {
@@ -37,7 +72,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
     rank = '#156',
   } = props;
 
-  // 📊 DOMYŚLNE dane tygodniowe - jeśli brak danych
+  // 📊 DOMYŚLNE dane tygodniowe - używane jako placeholder (mock), jeśli API nie zwróci danych
   const defaultWeeklyData: WeeklyData[] = [
     { day: 'Pon', lessons: 3, minutes: 45 },
     { day: 'Wt', lessons: 5, minutes: 62 },
@@ -48,22 +83,36 @@ export default function ProfileStats(props: ProfileStatsProps) {
     { day: 'Nie', lessons: 0, minutes: 0 },
   ];
 
-  // ✅ ZAWSZE mamy poprawne dane - albo przekazane, albo domyślne
+  // ✅ ZAWSZE mamy poprawne dane - wybieramy przekazane lub domyślne
   const weeklyData: WeeklyData[] = Array.isArray(weeklyDataInput) && weeklyDataInput.length > 0
     ? weeklyDataInput
     : defaultWeeklyData;
 
+  // Zabezpieczenie przed dzieleniem przez zero
   const safeDailyGoal = Math.max(dailyGoal || 1, 1);
+  // Obliczenie procentu realizacji celu (max 100%)
   const goalProgress = Math.min((todayLessons / safeDailyGoal) * 100, 100);
 
-  // 🔒 BEZPIECZNE obliczenia - nie może być undefined
+  // 🔒 LOGIKA WYKRESU
+  
+  // Znalezienie maksymalnej wartości w tygodniu do normalizacji wysokości słupków
   const lessonsArray = weeklyData.map(d => Number(d?.lessons || 0));
   const maxLessons = Math.max(...lessonsArray, 1);
 
+  /**
+   * Oblicza relatywną wysokość słupka w procentach.
+   * Minimalna wysokość to 4%, aby słupek był zawsze widoczny (nawet przy małych wartościach).
+   */
   const getBarHeight = (lessons: number): number => {
     return Math.max((Number(lessons || 0) / maxLessons) * 100, 4);
   };
 
+  /**
+   * Określa klasę koloru słupka na podstawie realizacji celu dziennego.
+   * - `low`: Poniżej 50% celu.
+   * - `medium`: Pomiędzy 50% a 100% celu.
+   * - `high`: Cel osiągnięty (100%+).
+   */
   const getBarColor = (lessons: number): string => {
     const l = Number(lessons || 0);
     if (l === 0) return 'low';
@@ -84,7 +133,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
 
       <div className={styles.statsGrid}>
         
-        {/* 💎 Points */}
+        {/* 💎 Points Card */}
         <div className={`${styles.statCard} ${styles.points}`}>
           <div className={styles.statIcon}>💎</div>
           <div className={styles.statContent}>
@@ -98,7 +147,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
           </div>
         </div>
 
-        {/* 🔥 Streak */}
+        {/* 🔥 Streak Card */}
         <div className={`${styles.statCard} ${styles.streak}`}>
           <div className={styles.statIcon}>🔥</div>
           <div className={styles.statContent}>
@@ -110,7 +159,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
           </div>
         </div>
 
-        {/* 🎯 Daily Goal */}
+        {/* 🎯 Daily Goal Card */}
         <div className={`${styles.statCard} ${styles.dailyGoal}`}>
           <div className={styles.statIcon}>🎯</div>
           <div className={styles.statContent}>
@@ -118,6 +167,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
               {todayLessons}/{safeDailyGoal}
             </div>
             <div className={styles.statLabel}>Dzisiejszy cel</div>
+            {/* Pasek postępu celu dziennego */}
             <div className={styles.progressBar}>
               <div 
                 className={styles.progressFill}
@@ -127,7 +177,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
           </div>
         </div>
 
-        {/* ⏱️ Total Hours */}
+        {/* ⏱️ Total Hours Card */}
         <div className={`${styles.statCard} ${styles.hours}`}>
           <div className={styles.statIcon}>⏱️</div>
           <div className={styles.statContent}>
@@ -139,7 +189,7 @@ export default function ProfileStats(props: ProfileStatsProps) {
           </div>
         </div>
 
-        {/* 📈 NAPRAWIONY Tygodniowy postęp - lepszy layout */}
+        {/* 📈 Tygodniowy postęp - Wykres słupkowy */}
         <div className={`${styles.statCard} ${styles.overallProgress}`}>
           <div className={styles.statContent}>
             <div style={{ 
@@ -168,9 +218,12 @@ export default function ProfileStats(props: ProfileStatsProps) {
             <div className={styles.weeklyChart}>
               {weeklyData.map((day, index) => (
                 <div key={index} className={styles.dayColumn}>
+                  {/* Etykieta dnia */}
                   <div className={styles.dayLabel}>
                     {day.day}
                   </div>
+                  
+                  {/* Słupek wykresu */}
                   <div className={styles.dayBar}>
                     <div 
                       className={`${styles.dayBarFill} ${styles[getBarColor(day.lessons)]}`}
@@ -179,6 +232,8 @@ export default function ProfileStats(props: ProfileStatsProps) {
                       }}
                     ></div>
                   </div>
+                  
+                  {/* Wartość liczbowa pod słupkiem */}
                   <div style={{ 
                     fontSize: '0.7rem', 
                     color: 'var(--neutral-500)',

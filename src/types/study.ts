@@ -1,33 +1,49 @@
-// types/study.ts
-// WSPÓLNE TYPY DLA WSZYSTKICH MODUŁÓW NAUKI
+/**
+ * @file study.ts
+ * @brief Globalne definicje typów dla modułów edukacyjnych.
+ *
+ * Plik zawiera kontrakty danych dla czterech głównych filarów aplikacji:
+ * 1. Fiszki (SRS - Spaced Repetition System)
+ * 2. Quizy (Szybkie sprawdzenie wiedzy)
+ * 3. Testy (Formalna ocena poziomu)
+ * 4. Gramatyka (Strukturalna nauka zasad)
+ */
+
+// ==========================================
+// CORE USER & PROGRESS
+// ==========================================
 
 export interface User {
   id: number;
   username: string;
   email: string;
+  /** Poziom biegłości językowej wg skali CEFR */
   level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   points: number;
-  streak: number;
+  streak: number; // Liczba dni z rzędu
   joinDate: Date;
   preferences: UserPreferences;
 }
 
 export interface UserPreferences {
-  dailyGoal: number;
-  reminderTime: string;
-  autoPlay: boolean;
+  dailyGoal: number; // Cel dzienny w punktach lub lekcjach
+  reminderTime: string; // Format HH:MM
+  autoPlay: boolean; // Automatyczne odtwarzanie audio
   darkMode: boolean;
   notifications: boolean;
 }
 
+/**
+ * Śledzenie postępu w konkretnym module (np. ile % kursu ukończono).
+ */
 export interface StudyProgress {
   userId: number;
   moduleType: 'flashcards' | 'quiz' | 'test' | 'grammar';
   moduleId: number;
-  progress: number; // 0-100%
+  progress: number; // Wartość 0-100%
   lastAccessed: Date;
-  timeSpent: number; // sekundy
-  score?: number;
+  timeSpent: number; // Całkowity czas spędzony w module (sekundy)
+  score?: number; // Opcjonalny wynik (dla testów/quizów)
   completedAt?: Date;
 }
 
@@ -37,11 +53,15 @@ export interface Achievement {
   description: string;
   icon: string;
   type: 'streak' | 'score' | 'completion' | 'time' | 'special';
-  requirement: number;
+  requirement: number; // Wartość progowa do odblokowania
   isUnlocked: boolean;
   unlockedAt?: Date;
 }
 
+/**
+ * Pojedyncza sesja nauki (np. jedno podejście do quizu).
+ * Służy do generowania historii aktywności i statystyk.
+ */
 export interface StudySession {
   id: number;
   userId: number;
@@ -51,13 +71,16 @@ export interface StudySession {
   endTime?: Date;
   score: number;
   maxScore: number;
-  timeSpent: number;
+  timeSpent: number; // Czas trwania sesji w sekundach
   questionsAnswered: number;
   correctAnswers: number;
-  isCompleted: boolean;
+  isCompleted: boolean; // Czy sesja została ukończona, czy przerwana
 }
 
-// FLASHCARDS SPECIFIC
+// ==========================================
+// FLASHCARDS (SRS SYSTEM)
+// ==========================================
+
 export interface FlashcardDeck {
   id: number;
   title: string;
@@ -71,16 +94,20 @@ export interface FlashcardDeck {
   isPublic: boolean;
   createdAt: Date;
   updatedAt: Date;
+  /** Agregowane statystyki dla danego użytkownika */
   studyStats: {
     totalStudySessions: number;
     avgScore: number;
     lastStudied?: Date;
-    masteredCards: number;
-    learningCards: number;
-    newCards: number;
+    masteredCards: number; // Karty w fazie "learned"
+    learningCards: number; // Karty w fazie nauki/powtórek
+    newCards: number;      // Karty nigdy nie wyświetlone
   };
 }
 
+/**
+ * Model pojedynczej fiszki z polami dla algorytmu SM-2.
+ */
 export interface Flashcard {
   id: number;
   deckId: number;
@@ -90,19 +117,24 @@ export interface Flashcard {
   imageUrl?: string;
   audioUrl?: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  // SM-2 Algorithm fields
-  interval: number;
-  easeFactor: number;
-  repetitions: number;
+  
+  // --- Pola algorytmu SM-2 (Spaced Repetition) ---
+  interval: number; // Dni do następnej powtórki
+  easeFactor: number; // Mnożnik łatwości (domyślnie 2.5)
+  repetitions: number; // Liczba poprawnych powtórek z rzędu
   lastReviewed?: Date;
-  nextReview: Date;
-  // Study progress
+  nextReview: Date; // Data zaplanowanej powtórki
+  
+  // --- Flagi stanu UI ---
   isNew: boolean;
   isLearning: boolean;
   isMastered: boolean;
 }
 
+// ==========================================
 // QUIZ SPECIFIC
+// ==========================================
+
 export interface Quiz {
   id: number;
   title: string;
@@ -111,7 +143,7 @@ export interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard';
   level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   questionsCount: number;
-  timeLimit?: number; // minuty
+  timeLimit?: number; // Opcjonalny limit czasu w minutach
   hasHints: boolean;
   category: string;
   tags: string[];
@@ -123,7 +155,10 @@ export interface Quiz {
   };
 }
 
-// TEST SPECIFIC
+// ==========================================
+// TEST SPECIFIC (Formal Assessment)
+// ==========================================
+
 export interface LanguageTest {
   id: number;
   title: string;
@@ -131,11 +166,11 @@ export interface LanguageTest {
   type: 'placement' | 'achievement' | 'diagnostic' | 'proficiency' | 'mock-exam';
   level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'Mixed';
   sections: TestSection[];
-  totalDuration: number; // minuty
+  totalDuration: number;
   totalQuestions: number;
-  passingScore: number;
-  isOfficial: boolean;
-  certification?: string;
+  passingScore: number; // Próg zaliczenia (np. 60%)
+  isOfficial: boolean; // Czy test daje oficjalny certyfikat wewnątrz apki
+  certification?: string; // Nazwa certyfikatu
   createdAt: Date;
 }
 
@@ -143,7 +178,7 @@ export interface TestSection {
   id: number;
   name: string;
   skill: 'reading' | 'writing' | 'listening' | 'speaking' | 'use-of-english';
-  timeLimit: number; // minuty
+  timeLimit: number;
   questionsCount: number;
   instructions: string;
   questions: TestQuestion[];
@@ -154,16 +189,19 @@ export interface TestQuestion {
   sectionId: number;
   type: 'multiple-choice' | 'cloze' | 'word-formation' | 'key-word' | 'essay' | 'email' | 'gap-fill';
   instruction?: string;
-  passage?: string;
+  passage?: string; // Tekst źródłowy (dla Reading/Cloze)
   question: string;
-  options?: string[];
-  correctAnswer: any;
+  options?: string[]; // Dla pytań zamkniętych
+  correctAnswer: any; // Może być stringiem, liczbą (index) lub tablicą
   points: number;
-  audioUrl?: string;
+  audioUrl?: string; // Dla Listening
   imageUrl?: string;
 }
 
+// ==========================================
 // GRAMMAR SPECIFIC
+// ==========================================
+
 export interface GrammarTopic {
   id: number;
   title: string;
@@ -172,8 +210,8 @@ export interface GrammarTopic {
   category: 'tenses' | 'modals' | 'conditionals' | 'passive' | 'reported' | 'articles' | 'prepositions' | 'other';
   rules: GrammarRule[];
   exercises: GrammarExercise[];
-  estimatedTime: number; // minuty
-  prerequisites: number[]; // topic IDs
+  estimatedTime: number;
+  prerequisites: number[]; // Lista ID tematów wymaganych do rozpoczęcia
   createdAt: Date;
 }
 
@@ -181,7 +219,7 @@ export interface GrammarRule {
   id: number;
   title: string;
   explanation: string;
-  formula?: string;
+  formula?: string; // Np. "Subject + have/has + Past Participle"
   examples: GrammarExample[];
   commonMistakes?: CommonMistake[];
 }
@@ -191,7 +229,7 @@ export interface GrammarExample {
   english: string;
   polish: string;
   context?: string;
-  isCorrect: boolean;
+  isCorrect: boolean; // True dla poprawnego przykładu, False dla anty-przykładu
 }
 
 export interface CommonMistake {
@@ -206,8 +244,8 @@ export interface GrammarExercise {
   type: 'fill-gap' | 'transform' | 'correct-mistake' | 'multiple-choice' | 'reorder';
   question: string;
   options?: string[];
-  correctAnswer: string | string[];
-  explanation: string;
+  correctAnswer: string | string[]; // Może być wiele poprawnych odpowiedzi
+  explanation: string; // Wyświetlane po udzieleniu odpowiedzi
   hint?: string;
   points: number;
 }

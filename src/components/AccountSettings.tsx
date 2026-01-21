@@ -1,37 +1,79 @@
+/**
+ * @file AccountSettings.tsx
+ * @brief Komponent formularza ustawień konta użytkownika.
+ *
+ * Plik ten zawiera interfejs użytkownika pozwalający na edycję profilu:
+ * zmianę nazwy wyświetlanej, biogramu (bio) oraz wybór awatara z predefiniowanej listy.
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import styles from '../styles/SettingsForm.module.css';
 import { updateUserProfile } from '../lib/api';
 
+/**
+ * Interfejs reprezentujący strukturę danych użytkownika.
+ * Używany do typowania propsów oraz stanu formularza.
+ */
 interface User {
+  /** Unikalny identyfikator użytkownika */
   id: number;
+  /** Nazwa logowania (nieedytowalna) */
   username: string;
+  /** Adres email (nieedytowalny) */
   email: string;
+  /** Opcjonalna nazwa wyświetlana (publiczna) */
   displayName?: string;
+  /** Opcjonalny krótki opis profilu */
   bio?: string;
+  /** Opcjonalny awatar (emoji lub URL) */
   avatar?: string;
 }
 
+/**
+ * Właściwości (Props) przyjmowane przez komponent AccountSettings.
+ */
 interface AccountSettingsProps {
+  /** Aktualnie zalogowany użytkownik */
   user: User | null;
+  /**
+   * Funkcja zwrotna (callback) wywoływana po pomyślnej aktualizacji danych.
+   * Może służyć np. do odświeżenia danych w kontekście aplikacji lub zamknięcia modala.
+   */
   onSuccess?: () => void;
 }
 
+/**
+ * Komponent AccountSettings.
+ *
+ * Zarządza formularzem edycji profilu. Obsługuje walidację, wysyłkę danych do API
+ * oraz wyświetlanie komunikatów o błędach i sukcesie.
+ *
+ * @param {AccountSettingsProps} props - Obiekt właściwości komponentu.
+ * @returns {JSX.Element} Wyrenderowany widok ustawień konta.
+ */
 export default function AccountSettings({ user, onSuccess }: AccountSettingsProps) {
+  // --- STANY UI ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Formy
+  // --- STANY FORMULARZA ---
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('👤');
 
-  // Dostępne awatary do wyboru
+  /**
+   * Lista dostępnych awatarów do wyboru przez użytkownika.
+   * Obecnie ograniczona do zestawu emoji.
+   */
   const availableAvatars = ['👤', '👨', '👩', '🧑', '👨‍💼', '👩‍💼', '🎓', '📚', '🚀', '💡', '🌟', '⭐'];
 
-  // Załaduj dane użytkownika
+  /**
+   * Efekt uboczny aktualizujący pola formularza po załadowaniu lub zmianie obiektu użytkownika.
+   * Zapewnia, że formularz jest wypełniony aktualnymi danymi z bazy.
+   */
   useEffect(() => {
     if (user) {
       setDisplayName(user.displayName || user.username || '');
@@ -40,6 +82,14 @@ export default function AccountSettings({ user, onSuccess }: AccountSettingsProp
     }
   }, [user]);
 
+  /**
+   * Obsługa wysłania formularza.
+   *
+   * Pobiera token autoryzacyjny, wysyła dane do API `updateUserProfile`
+   * i zarządza stanami odpowiedzi (sukces/błąd).
+   *
+   * @param {React.FormEvent} e - Zdarzenie wysłania formularza.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -63,7 +113,7 @@ export default function AccountSettings({ user, onSuccess }: AccountSettingsProp
         onSuccess();
       }
 
-      // Ukryj komunikat sukcesu po 3 sekundach
+      // Ukryj komunikat sukcesu po 3 sekundach (UX)
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Nieznany błąd';

@@ -1,4 +1,16 @@
-// frontend/src/pages/index.tsx
+/**
+ * @file index.tsx
+ * @brief Strona główna (Dashboard) zalogowanego użytkownika.
+ *
+ * Jest to centrum dowodzenia aplikacją. Komponent ten:
+ * 1. Agreguje dane z dwóch źródeł API:
+ * - `/auth/me`: Dane profilowe, punkty, streak, cel dzienny.
+ * - `/categories`: Lista dostępnych lekcji wraz z OBLICZONYM postępem (backend-side calculation).
+ * 2. Przekazuje te dane do komponentów prezentacyjnych:
+ * - `WelcomeSection`: Hero banner z powitaniem.
+ * - `UserStats`: Widgety statystyk (KPI).
+ * - `LessonsList`: Lista kategorii do nauki (Pasek boczny).
+ */
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -9,14 +21,20 @@ import UserStats from '../components/UserStats';
 import styles from '../styles/Home.module.css';
 import { apiRequest } from '../lib/api';
 
-// Zaktualizowany interfejs kategorii
+/**
+ * Interfejs kategorii rozszerzony o pole postępu.
+ * To pole `progress` jest teraz obliczane przez backend na podstawie liczby opanowanych fiszek.
+ */
 interface CategoryWithProgress {
   id: number;
   name: string;
-  progress: number; // Teraz backend to zwraca!
+  progress: number; // Wartość 0-100 zwracana przez API
   totalCards: number;
 }
 
+/**
+ * Dane użytkownika potrzebne do sekcji Hero i Statystyk.
+ */
 interface UserDashboardData {
   username: string;
   points: number;
@@ -28,6 +46,7 @@ interface UserDashboardData {
   level: number;
 }
 
+/** Struktura danych dla pojedynczego kafelka statystyk */
 interface Stat {
   title: string;
   value: string;
@@ -38,32 +57,43 @@ interface Stat {
 
 export default function Home() {
   const router = useRouter();
+  
+  // --- STANY ---
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserDashboardData | null>(null);
   const [lessons, setLessons] = useState<any[]>([]);
 
+  /**
+   * Efekt inicjalizacji danych.
+   * Pobiera równolegle (lub sekwencyjnie) dane użytkownika i strukturę kursu.
+   */
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
+        
+        // Bezpiecznik: Jeśli brak tokena, Layout/AuthGuard i tak przekieruje,
+        // ale tutaj przerywamy pobieranie, by uniknąć błędów 401.
         if (!token) {
           setLoading(false);
           return;
         }
 
-        // 1. Pobieramy usera
+        // 1. Pobranie danych Użytkownika (Hero Section + Stats)
         const userResponse = await apiRequest<UserDashboardData>('/auth/me', 'GET', null, token);
         setUserData(userResponse);
 
-        // 2. Pobieramy kategorie z NOWYM POLICZONYM POSTĘPEM
-        // Ważne: teraz przekazujemy token, bo backend tego wymaga do liczenia
+        // 2. Pobranie Kategorii z RZECZYWISTYM POSTĘPEM
+        // Endpoint `/categories` w backendzie sprawdza tabelę UserFlashcardProgress
+        // i zwraca procent ukończenia dla każdej kategorii.
         const categoriesResponse = await apiRequest<CategoryWithProgress[]>('/categories', 'GET', null, token);
         
+        // Mapowanie danych z API na format wymagany przez komponent LessonsList
         const formattedLessons = categoriesResponse.map(cat => ({
           id: cat.id,
           title: cat.name,
-          level: 'A1', // Możemy to kiedyś brać z bazy
-          progress: cat.progress, // <-- TUTAJ WPADANĄ PRAWDZIWE PROCENTY (np. 85%)
+          level: 'A1', // Placeholder: W przyszłości można to pobierać z bazy
+          progress: cat.progress, // <-- Kluczowe: Prawdziwy procent z backendu
           status: cat.progress === 100 ? 'completed' : 'inprogress'
         }));
         
@@ -71,6 +101,7 @@ export default function Home() {
 
       } catch (error) {
         console.error("Błąd dashboardu:", error);
+        // Opcjonalnie: obsługa wylogowania przy błędzie 401
       } finally {
         setLoading(false);
       }
@@ -79,6 +110,7 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // Przygotowanie danych dla widgetów statystyk (UserStats)
   const stats: Stat[] = [
     {
       title: 'Twój Poziom',
@@ -106,6 +138,7 @@ export default function Home() {
     }
   ];
 
+  // Renderowanie stanu ładowania (można zastąpić Skeleton Loaderem)
   if (loading) return <Layout><div>Ładowanie...</div></Layout>;
 
   return (
@@ -114,17 +147,17 @@ export default function Home() {
         <main className={styles.main}>
           <div className={styles.container}>
             
-            {/* LEWA KOLUMNA - Lista Lekcji (Teraz z prawdziwym progresem!) */}
+            {/* LEWA KOLUMNA: Nawigacja po lekcjach */}
             <div className={styles.sidebar}>
               <LessonsList lessons={lessons} />
             </div>
             
-            {/* ŚRODEK - Powitanie */}
+            {/* ŚRODKOWA KOLUMNA: Hero Section */}
             <div className={styles.welcomeSection}>
               {userData && <WelcomeSection user={userData} />}
             </div>
             
-            {/* PRAWA KOLUMNA - Statystyki */}
+            {/* PRAWA KOLUMNA: KPI i Statystyki */}
             <div className={styles.statsSection}>
               <UserStats stats={stats} />
             </div>

@@ -1,28 +1,77 @@
+/**
+ * @file ActivityFeed.tsx
+ * @brief Komponent wyświetlający strumień aktywności użytkownika.
+ *
+ * Prezentuje historię działań (lekcje, quizy, osiągnięcia) w formie listy.
+ * Obsługuje stan pusty, wyświetlanie danych domyślnych (mock) oraz limitowanie
+ * widocznych elementów (np. do paska bocznego).
+ */
 
 'use client';
 
 import styles from '../styles/ActivityFeed.module.css';
 
+/**
+ * Interfejs reprezentujący pojedynczą aktywność w historii użytkownika.
+ */
 interface Activity {
+  /** Unikalny identyfikator aktywności. */
   id: number;
+  /**
+   * Typ zdarzenia determinujący ikonę i styl kolorystyczny.
+   * Dostępne wartości: 'lesson', 'quiz', 'achievement', 'streak'.
+   */
   type: 'lesson' | 'quiz' | 'achievement' | 'streak';
+  /** Tytuł aktywności (np. nazwa lekcji). */
   title: string;
+  /** Nazwa kursu lub kategorii powiązanej z aktywnością. */
   courseName: string;
+  /** Liczba zdobytych punktów. */
   points: number;
+  /** Czas trwania aktywności w minutach (opcjonalne). */
   duration?: number;
+  /** Dokładność/wynik w procentach (opcjonalne). */
   accuracy?: number;
+  /** Sformatowana data lub czas relatywny (np. "9h temu"). */
   date: string;
+  /** Opcjonalny nadpisany symbol ikony (emoji lub URL). */
   icon?: string;
 }
 
+/**
+ * Właściwości (Props) przyjmowane przez komponent ActivityFeed.
+ */
 interface ActivityFeedProps {
+  /**
+   * Opcjonalna lista aktywności do wyświetlenia.
+   * Jeśli tablica jest pusta lub niezdefiniowana, komponent użyje danych domyślnych.
+   */
   activities?: Activity[];
+  /**
+   * Flaga sterująca ilością wyświetlanych elementów.
+   * - `true`: Wyświetla całą listę.
+   * - `false`: Wyświetla tylko 3 najnowsze elementy (tryb kompaktowy/widget).
+   * @default false
+   */
   showAll?: boolean;
 }
 
+/**
+ * Komponent ActivityFeed.
+ *
+ * Odpowiada za renderowanie sekcji "Ostatnia Aktywność". Zawiera wewnętrzną logikę
+ * formatowania danych (punkty, czas) oraz mapowania typów aktywności na style CSS.
+ *
+ * @param {ActivityFeedProps} props - Parametry wejściowe komponentu.
+ * @returns {JSX.Element} Wyrenderowany komponent listy lub stan pusty ("Empty State").
+ */
 export default function ActivityFeed({ activities: activitiesInput, showAll = false }: ActivityFeedProps) {
   
   // 🔒 BEZPIECZNE dane - krótkie, mierzące się w oknie
+  /**
+   * Domyślny zestaw danych (mock), używany gdy nie przekazano żadnych aktywności.
+   * Służy do celów demonstracyjnych lub jako placeholder.
+   */
   const defaultActivities: Activity[] = [
     {
       id: 1,
@@ -49,13 +98,26 @@ export default function ActivityFeed({ activities: activitiesInput, showAll = fa
   ];
 
   // ✅ ZAWSZE mamy poprawne dane
+  /**
+   * Ostateczna lista aktywności do przetworzenia.
+   * Wybiera pomiędzy danymi wejściowymi a domyślnymi.
+   */
   const activities: Activity[] = Array.isArray(activitiesInput) && activitiesInput.length > 0
     ? activitiesInput
     : defaultActivities;
 
   // 🎯 Tylko 3 najnowsze dla sidebar
+  /**
+   * Lista przefiltrowana do widoku.
+   * Jeśli `showAll` jest false, przycina listę do 3 elementów.
+   */
   const displayActivities = showAll ? activities : activities.slice(0, 3);
 
+  /**
+   * Zwraca ikonę (emoji) na podstawie typu aktywności.
+   * @param {Activity} activity - Obiekt aktywności.
+   * @returns {string} Emoji reprezentujące aktywność.
+   */
   const getActivityIcon = (activity: Activity): string => {
     if (activity.icon) return activity.icon;
     switch (activity.type) {
@@ -67,6 +129,11 @@ export default function ActivityFeed({ activities: activitiesInput, showAll = fa
     }
   };
 
+  /**
+   * Mapuje typ aktywności na nazwę klasy CSS koloru.
+   * @param {Activity} activity - Obiekt aktywności.
+   * @returns {string} Nazwa klasy (np. 'blue', 'green').
+   */
   const getActivityIconClass = (activity: Activity): string => {
     switch (activity.type) {
       case 'lesson': return 'blue';
@@ -77,21 +144,28 @@ export default function ActivityFeed({ activities: activitiesInput, showAll = fa
     }
   };
 
+  /**
+   * Formatuje liczbę punktów, dodając znak plusa dla wartości dodatnich.
+   * @param {number | undefined} points - Liczba punktów.
+   */
   const formatPoints = (points: number | undefined): string => {
     if (!points || points === 0) return '+0';
     return points > 0 ? `+${points}` : `${points}`;
   };
 
+  /** Formatuje czas trwania (dodaje sufiks 'min'). */
   const formatDuration = (duration: number | undefined): string => {
     if (!duration) return '';
     return `${duration} min`;
   };
 
+  /** Formatuje dokładność (dodaje znak %). */
   const formatAccuracy = (accuracy: number | undefined): string => {
     if (!accuracy) return '';
     return `${accuracy}%`;
   };
 
+  // --- RENDEROWANIE STANU PUSTEGO ---
   if (!activities || activities.length === 0) {
     return (
       <div className={styles.container}>
@@ -117,6 +191,7 @@ export default function ActivityFeed({ activities: activitiesInput, showAll = fa
     );
   }
 
+  // --- RENDEROWANIE LISTY ---
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -124,6 +199,7 @@ export default function ActivityFeed({ activities: activitiesInput, showAll = fa
           <span className={styles.titleIcon}>⚡</span>
           Ostatnia Aktywność
         </h3>
+        {/* Link "Zobacz wszystko" pojawia się tylko, gdy ukrywamy część elementów */}
         {activities.length > 3 && !showAll && (
           <a href="/profile/activity" className={styles.viewAllBtn}>
             Zobacz wszystko →

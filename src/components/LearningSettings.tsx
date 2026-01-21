@@ -1,13 +1,27 @@
+/**
+ * @file LearningSettings.tsx
+ * @brief Komponent konfiguracji celów edukacyjnych użytkownika.
+ *
+ * Pozwala użytkownikowi zdefiniować preferencje dotyczące tempa nauki (cel dzienny w minutach)
+ * oraz poziomu trudności materiałów. Zawiera również sekcję symulacji, która pokazuje,
+ * ile czasu użytkownik poświęci na naukę w skali tygodnia/miesiąca/roku przy obecnych ustawieniach.
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import styles from '../styles/SettingsForm.module.css';
 import { updateUserSettings } from '../lib/api';
 
+/**
+ * Interfejs reprezentujący pełny obiekt ustawień użytkownika z bazy danych.
+ */
 interface UserSettings {
   id: number;
   userId: number;
+  /** Dzienny cel nauki wyrażony w minutach */
   dailyGoal: number;
+  /** Poziom trudności ('Easy', 'Medium', 'Hard') */
   difficulty: string;
   notificationsEnabled: boolean;
   emailNotifications: boolean;
@@ -15,29 +29,57 @@ interface UserSettings {
   showStats: boolean;
 }
 
+/**
+ * Props przyjmowane przez komponent LearningSettings.
+ */
 interface LearningSettingsProps {
+  /** ID użytkownika, którego ustawienia są edytowane */
   userId: number;
+  /** Aktualne ustawienia pobrane z API (lub null, jeśli ładowanie trwa) */
   settings: UserSettings | null;
+  /** Callback wywoływany po pomyślnym zapisaniu zmian */
   onSuccess?: () => void;
 }
 
+/**
+ * Komponent formularza ustawień nauki.
+ *
+ * @param {LearningSettingsProps} props - Właściwości komponentu.
+ * @returns {JSX.Element} Wyrenderowany formularz z suwakami i przyciskami wyboru.
+ */
 export default function LearningSettings({ userId, settings, onSuccess }: LearningSettingsProps) {
+  // --- STANY UI ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Formy
+  // --- STANY FORMULARZA ---
+  /** Stan suwaka celu dziennego (w minutach) */
   const [dailyGoal, setDailyGoal] = useState(15);
+  /** Stan wybranego poziomu trudności */
   const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
 
-  // Załaduj ustawienia
+  /**
+   * Efekt synchronizujący stan lokalny formularza z danymi wejściowymi (props).
+   * Uruchamia się po załadowaniu danych użytkownika (`settings`).
+   */
   useEffect(() => {
     if (settings) {
       setDailyGoal(settings.dailyGoal || 15);
+      // Rzutowanie typu string z bazy na konkretny Union Type
       setDifficulty((settings.difficulty as 'Easy' | 'Medium' | 'Hard') || 'Medium');
     }
   }, [settings]);
 
+  /**
+   * Obsługa zapisu ustawień.
+   *
+   * 1. Pobiera token autoryzacyjny.
+   * 2. Wysyła żądanie PUT do API przez `updateUserSettings`.
+   * 3. Obsługuje stany ładowania, sukcesu i błędu.
+   *
+   * @param {React.FormEvent} e - Zdarzenie submit formularza.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -60,7 +102,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
         onSuccess();
       }
 
-      // Ukryj komunikat sukcesu po 3 sekundach
+      // Ukryj komunikat sukcesu po 3 sekundach (dla lepszego UX)
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Nieznany błąd';
@@ -79,7 +121,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
 
       <form onSubmit={handleSubmit} className={styles.form}>
         
-        {/* Cel dzienny */}
+        {/* Cel dzienny - Suwak (Range Input) */}
         <div className={styles.formGroup}>
           <label htmlFor="dailyGoal" className={styles.label}>
             🎯 Cel dzienny (minuty)
@@ -96,6 +138,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
               className={styles.rangeInput}
               style={{ flex: 1 }}
             />
+            {/* Wyświetlacz wartości suwaka */}
             <div
               style={{
                 backgroundColor: '#e3f2fd',
@@ -112,6 +155,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
               {dailyGoal} min
             </div>
           </div>
+          {/* Dynamiczna podpowiedź zależna od wartości */}
           <small className={styles.hint}>
             {dailyGoal < 15 && '⚠️ Mniej niż zalecane (15 min)'}
             {dailyGoal >= 15 && dailyGoal < 30 && '✅ Dobry początek'}
@@ -120,7 +164,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
           </small>
         </div>
 
-        {/* Poziom trudności */}
+        {/* Poziom trudności - Custom Radio Buttons */}
         <div className={styles.formGroup}>
           <label className={styles.label}>
             📊 Poziom trudności
@@ -158,7 +202,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
           </small>
         </div>
 
-        {/* Informacyjny box */}
+        {/* Informacyjny box - Wskazówka dydaktyczna */}
         <div 
           className={styles.infoBox}
           style={{
@@ -175,7 +219,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
           </p>
         </div>
 
-        {/* Statystyka */}
+        {/* Statystyka / Prognoza czasu nauki */}
         <div
           style={{
             backgroundColor: '#fafafa',
@@ -196,7 +240,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
           </ul>
         </div>
 
-        {/* Komunikaty */}
+        {/* Komunikaty Feedbackowe */}
         {error && (
           <div className={styles.alert} style={{ backgroundColor: '#fee', color: '#c33' }}>
             ❌ {error}
@@ -221,7 +265,7 @@ export default function LearningSettings({ userId, settings, onSuccess }: Learni
         </div>
       </form>
 
-      {/* Rekomendacje */}
+      {/* Sekcja Rekomendacji */}
       <div 
         style={{
           backgroundColor: '#fff3e0',

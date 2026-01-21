@@ -1,9 +1,21 @@
+/**
+ * @file StudyFilters.tsx
+ * @brief Komponent panelu bocznego z filtrami materiałów edukacyjnych.
+ *
+ * Umożliwia filtrowanie listy materiałów według wielu kryteriów (poziom, kategoria, typ itp.).
+ * Obsługuje zwijane sekcje (akordeon) oraz "szybkie filtry" (presety).
+ * Komponent jest "sterowany" (controlled component) - stan filtrów znajduje się w komponencie nadrzędnym.
+ */
 
 'use client';
 
 import { useState } from 'react';
 import styles from '../styles/StudyFilters.module.css';
 
+/**
+ * Interfejs definiujący strukturę stanu aktywnych filtrów.
+ * Klucze odpowiadają sekcjom, a wartości to tablice wybranych opcji.
+ */
 interface ActiveFilters {
   levels: string[];
   categories: string[];
@@ -13,13 +25,28 @@ interface ActiveFilters {
   duration: string[];
 }
 
+/**
+ * Właściwości (Props) przyjmowane przez komponent StudyFilters.
+ */
 interface StudyFiltersProps {
+  /** Obiekt zawierający aktualnie wybrane filtry */
   activeFilters: ActiveFilters;
+  /**
+   * Callback wywoływany przy zmianie pojedynczego filtra (checkbox).
+   * @param filterType - Klucz sekcji (np. 'levels').
+   * @param value - Wybrana wartość (np. 'A1').
+   */
   onFilterChange: (filterType: keyof ActiveFilters, value: string) => void;
+  /** Callback do zresetowania wszystkich filtrów */
   onClearAll: () => void;
+  /** Liczba aktywnych filtrów (do wyświetlenia na przycisku czyszczenia) */
   activeFilterCount: number;
 }
 
+/**
+ * Konfiguracja pojedynczej sekcji filtrów.
+ * Używana do generowania UI w pętli.
+ */
 interface FilterSection {
   key: keyof ActiveFilters;
   title: string;
@@ -27,16 +54,28 @@ interface FilterSection {
   options: Array<{
     value: string;
     label: string;
+    /** Liczba dostępnych materiałów w danej kategorii (opcjonalne) */
     count?: number;
   }>;
 }
 
+/**
+ * Komponent StudyFilters.
+ *
+ * @param {StudyFiltersProps} props - Właściwości komponentu.
+ * @returns {JSX.Element} Panel filtrów z akordeonem.
+ */
 export default function StudyFilters({ 
   activeFilters, 
   onFilterChange, 
   onClearAll, 
   activeFilterCount 
 }: StudyFiltersProps) {
+  
+  /**
+   * Stan lokalny zarządzający widocznością (zwinięciem/rozwinięciem) poszczególnych sekcji.
+   * Domyślnie rozwinięte są 'levels' i 'categories'.
+   */
   const [expandedSections, setExpandedSections] = useState<Record<keyof ActiveFilters, boolean>>({
     levels: true,
     categories: true,
@@ -46,6 +85,9 @@ export default function StudyFilters({
     duration: false
   });
 
+  /**
+   * Przełącza widoczność danej sekcji filtrów.
+   */
   const toggleSection = (section: keyof ActiveFilters): void => {
     setExpandedSections(prev => ({
       ...prev,
@@ -53,6 +95,10 @@ export default function StudyFilters({
     }));
   };
 
+  /**
+   * Statyczna konfiguracja filtrów.
+   * W przyszłości dane te (szczególnie `count`) mogą pochodzić z API.
+   */
   const filterSections: FilterSection[] = [
     {
       key: 'levels',
@@ -124,6 +170,7 @@ export default function StudyFilters({
 
   return (
     <div className={styles.container}>
+      {/* Nagłówek panelu z przyciskiem czyszczenia */}
       <div className={styles.header}>
         <h3 className={styles.title}>
           <span className={styles.titleIcon}>🔍</span>
@@ -141,6 +188,7 @@ export default function StudyFilters({
       </div>
 
       <div className={styles.filtersContent}>
+        {/* Renderowanie sekcji filtrów na podstawie konfiguracji */}
         {filterSections.map((section) => (
           <div key={section.key} className={styles.filterSection}>
             <button
@@ -150,6 +198,7 @@ export default function StudyFilters({
               <div className={styles.sectionTitle}>
                 <span className={styles.sectionIcon}>{section.icon}</span>
                 {section.title}
+                {/* Licznik aktywnych filtrów w danej sekcji */}
                 {activeFilters[section.key].length > 0 && (
                   <span className={styles.activeCount}>
                     {activeFilters[section.key].length}
@@ -163,6 +212,7 @@ export default function StudyFilters({
               </span>
             </button>
 
+            {/* Rozwijana lista opcji (Checkboxy) */}
             {expandedSections[section.key] && (
               <div className={styles.optionsList}>
                 {section.options.map((option) => (
@@ -189,13 +239,14 @@ export default function StudyFilters({
           </div>
         ))}
 
-        {/* Quick Filters */}
+        {/* Sekcja Szybkich Filtrów (Presets) */}
         <div className={styles.quickFilters}>
           <h4 className={styles.quickTitle}>Szybkie filtry</h4>
           <div className={styles.quickButtons}>
             <button 
               className={styles.quickBtn}
               onClick={() => {
+                // Logika: Czyścimy wszystko, a potem ustawiamy jeden konkretny filtr
                 onClearAll();
                 onFilterChange('status', 'W trakcie');
               }}

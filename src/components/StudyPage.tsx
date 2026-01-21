@@ -1,4 +1,14 @@
-// src/components/StudyPage.tsx
+/**
+ * @file StudyPage.tsx
+ * @brief Główny widok katalogu materiałów edukacyjnych (Strona "Nauka").
+ *
+ * Komponent ten pełni rolę "Smart Component" (Kontrolera). Odpowiada za:
+ * 1. Przechowywanie stanu surowych danych (obecnie Mock Data).
+ * 2. Zarządzanie stanem filtrów, wyszukiwania i sortowania.
+ * 3. Logikę przetwarzania danych w czasie rzeczywistym (useEffect).
+ * 4. Przekazywanie przetworzonych danych do komponentów prezentacyjnych (Search, Filters, Content).
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,10 +16,13 @@ import Head from 'next/head';
 import Header from './Header';
 import StudyFilters from './StudyFilters';
 import StudySearch from './StudySearch';
-import StudyContent from './StudyContent';
+import StudyContent from './StudyContent'; // Uwaga: W poprzednim kroku StudyContent przyjmował listę, tutaj jest mapowany pojedynczo.
 import StudyProgress from './StudyProgress';
 import styles from '@/styles/StudyPage.module.css';
 
+/**
+ * Interfejs reprezentujący pełny model danych materiału edukacyjnego.
+ */
 interface StudyMaterial {
   id: number;
   name: string;
@@ -31,6 +44,10 @@ interface StudyMaterial {
   thumbnail: string;
 }
 
+/**
+ * Interfejs stanu filtrów. Każdy klucz to kategoria filtra,
+ * a wartość to tablica wybranych opcji (multiselect).
+ */
 interface ActiveFilters {
   levels: string[];
   categories: string[];
@@ -40,8 +57,14 @@ interface ActiveFilters {
   duration: string[];
 }
 
+/**
+ * Główny komponent strony StudyPage.
+ */
 export default function StudyPage(): JSX.Element {
+  // --- STANY ---
   const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Stan przechowujący aktywne filtry dla każdej kategorii
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
     levels: [],
     categories: [],
@@ -50,12 +73,16 @@ export default function StudyPage(): JSX.Element {
     difficulty: [],
     duration: []
   });
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'progress' | 'level' | 'recent'>('name');
+  
+  // Stan przechowujący wynikową listę materiałów po filtracji
   const [filteredMaterials, setFilteredMaterials] = useState<StudyMaterial[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Przykładowe dane materiałów
+  // --- DANE (MOCK) ---
+  // W przyszłości te dane będą pobierane z API w useEffect lub getServerSideProps
   const studyMaterials: StudyMaterial[] = [
     {
       id: 1,
@@ -77,6 +104,7 @@ export default function StudyPage(): JSX.Element {
       isFavorite: true,
       thumbnail: '👋'
     },
+    // ... (reszta danych mockowych)
     {
       id: 2,
       name: 'Present Simple',
@@ -179,11 +207,18 @@ export default function StudyPage(): JSX.Element {
     }
   ];
 
-  // Filtrowanie materiałów
+  // --- LOGIKA FILTROWANIA I SORTOWANIA ---
+  /**
+   * Efekt uboczny, który uruchamia się przy każdej zmianie:
+   * - searchTerm (wyszukiwanie)
+   * - activeFilters (filtry boczne)
+   * - sortBy (kolejność)
+   * * Tworzy nową tablicę `filtered`, przepuszczając ją przez kolejne "sita" warunków.
+   */
   useEffect(() => {
     let filtered = [...studyMaterials];
 
-    // Filtrowanie po wyszukiwaniu
+    // 1. Wyszukiwanie tekstowe (Nazwa lub Opis)
     if (searchTerm) {
       filtered = filtered.filter(material =>
         material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -191,59 +226,63 @@ export default function StudyPage(): JSX.Element {
       );
     }
 
-    // Filtrowanie po poziomach
+    // 2. Filtry kategorialne (Multiselect - OR wewnątrz kategorii, AND pomiędzy kategoriami)
+    
+    // Poziom
     if (activeFilters.levels.length > 0) {
       filtered = filtered.filter(material =>
         activeFilters.levels.includes(material.level)
       );
     }
 
-    // Filtrowanie po kategoriach
+    // Kategoria
     if (activeFilters.categories.length > 0) {
       filtered = filtered.filter(material =>
         activeFilters.categories.includes(material.category)
       );
     }
 
-    // Filtrowanie po typach
+    // Typ
     if (activeFilters.types.length > 0) {
       filtered = filtered.filter(material =>
         activeFilters.types.includes(material.type)
       );
     }
 
-    // Filtrowanie po statusie
+    // Status
     if (activeFilters.status.length > 0) {
       filtered = filtered.filter(material =>
         activeFilters.status.includes(material.status)
       );
     }
 
-    // Filtrowanie po trudności
+    // Trudność
     if (activeFilters.difficulty.length > 0) {
       filtered = filtered.filter(material =>
         activeFilters.difficulty.includes(material.difficulty)
       );
     }
 
-    // Filtrowanie po czasie trwania
+    // Czas trwania
     if (activeFilters.duration.length > 0) {
       filtered = filtered.filter(material =>
         activeFilters.duration.includes(material.duration)
       );
     }
 
-    // Sortowanie
+    // 3. Sortowanie wyników
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
         case 'progress':
-          return b.progress - a.progress;
+          return b.progress - a.progress; // Malejąco
         case 'level':
+          // Definicja kolejności poziomów CEFR
           const levelOrder = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
           return levelOrder.indexOf(a.level) - levelOrder.indexOf(b.level);
         case 'recent':
+          // Sortowanie po dacie (z obsługą null)
           if (!a.lastStudied && !b.lastStudied) return 0;
           if (!a.lastStudied) return 1;
           if (!b.lastStudied) return -1;
@@ -256,15 +295,22 @@ export default function StudyPage(): JSX.Element {
     setFilteredMaterials(filtered);
   }, [searchTerm, activeFilters, sortBy]);
 
+  // --- HANDLERY ---
+
+  /**
+   * Obsługuje zmianę stanu konkretnego filtra.
+   * Działa na zasadzie toggle (dodaj jeśli nie ma, usuń jeśli jest).
+   */
   const handleFilterChange = (filterType: keyof ActiveFilters, value: string): void => {
     setActiveFilters(prev => ({
       ...prev,
       [filterType]: prev[filterType].includes(value)
-        ? prev[filterType].filter(item => item !== value)
-        : [...prev[filterType], value]
+        ? prev[filterType].filter(item => item !== value) // Usuń
+        : [...prev[filterType], value] // Dodaj
     }));
   };
 
+  /** Resetuje wszystkie filtry i wyszukiwarkę. */
   const clearAllFilters = (): void => {
     setActiveFilters({
       levels: [],
@@ -277,6 +323,7 @@ export default function StudyPage(): JSX.Element {
     setSearchTerm('');
   };
 
+  /** Oblicza łączną liczbę aktywnych filtrów (do wyświetlenia na przycisku). */
   const activeFilterCount: number = Object.values(activeFilters).reduce(
     (count, filters) => count + filters.length,
     0
@@ -293,29 +340,29 @@ export default function StudyPage(): JSX.Element {
 
       <main className={styles.studyPage}>
         <div className={styles.container}>
-          {/* Header sekcji */}
+          {/* Sekcja Hero / Header */}
           <div className={styles.header}>
             <h1>📚 Nauka</h1>
             <p>Wybierz materiały i kontynuuj swoją naukę</p>
           </div>
 
-          {/* Wyszukiwanie */}
+          {/* Komponent wyszukiwania */}
           <StudySearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
           <div className={styles.mainContent}>
-            {/* Filtry */}
+            {/* Panel boczny z filtrami */}
             <aside className={styles.sidebar}>
               <StudyFilters
                 activeFilters={activeFilters}
                 onFilterChange={handleFilterChange}
-                onClearFilters={clearAllFilters}
+                onClearAll={clearAllFilters} // Poprawiono nazwę propa (zgodnie z interfejsem StudyFilters)
                 activeFilterCount={activeFilterCount}
               />
             </aside>
 
-            {/* Zawartość */}
+            {/* Główna sekcja z wynikami */}
             <section className={styles.content}>
-              {/* Kontrolki widoku */}
+              {/* Pasek narzędziowy: Widok i Sortowanie */}
               <div className={styles.controls}>
                 <div className={styles.viewToggle}>
                   <button
@@ -346,13 +393,18 @@ export default function StudyPage(): JSX.Element {
                 </select>
               </div>
 
-              {/* Wyniki */}
+              {/* Lista wyników */}
               <div className={`${styles.materialsContainer} ${styles[viewMode]}`}>
                 {filteredMaterials.length > 0 ? (
                   filteredMaterials.map((material) => (
-                    <StudyContent key={material.id} material={material} />
+                    // Renderowanie pojedynczego materiału.
+                    // Uwaga: Jeśli StudyContent jest listą, tutaj powinniśmy użyć StudyCard,
+                    // lub przekazać całą tablicę do StudyContent raz.
+                    // Zakładam, że w tym kontekście StudyContent działa jako wrapper na kartę.
+                    <StudyContent key={material.id} materials={[material]} viewMode={viewMode} isLoading={false} searchTerm={""} activeFilterCount={0} />
                   ))
                 ) : (
+                  // Stan pusty wewnątrz kontenera wyników
                   <div className={styles.emptyState}>
                     <p>Brak materiałów pasujących do Twoich kryteriów</p>
                     <button onClick={clearAllFilters} className={styles.clearBtn}>
@@ -364,7 +416,7 @@ export default function StudyPage(): JSX.Element {
             </section>
           </div>
 
-          {/* Postęp użytkownika */}
+          {/* Sekcja podsumowania postępu (widoczna tylko gdy są wyniki) */}
           {filteredMaterials.length > 0 && (
             <StudyProgress materials={filteredMaterials} />
           )}

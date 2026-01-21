@@ -1,3 +1,14 @@
+/**
+ * @file UserFlashcardsManager.tsx
+ * @brief Panel zarządzania własnymi fiszkami użytkownika (CRUD).
+ *
+ * Umożliwia użytkownikowi:
+ * 1. Tworzenie nowych fiszek w wybranej kategorii.
+ * 2. Edycję istniejących fiszek.
+ * 3. Usuwanie fiszek.
+ * 4. Przeglądanie listy fiszek w danej kategorii.
+ */
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,11 +17,17 @@ import Layout from '@/components/Layout';
 import styles from '@/styles/FlashcardCreator.module.css';
 import { apiRequest } from '@/lib/api';
 
+/**
+ * Reprezentacja kategorii pobranej z API.
+ */
 interface Category {
   id: number;
   name: string;
 }
 
+/**
+ * Struktura fiszki w panelu edycji.
+ */
 interface Flashcard {
   id: number;
   front: string;
@@ -18,31 +35,42 @@ interface Flashcard {
   categoryId: number | null;
 }
 
+/**
+ * Komponent UserFlashcardsManager.
+ *
+ * @returns {JSX.Element} Widok kreatora fiszek.
+ */
 export default function UserFlashcardsManager() {
   const router = useRouter();
+  
+  // --- STANY DANYCH ---
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] =
-    useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // formularz dodawania / edycji
+  // --- STANY FORMULARZA ---
+  /**
+   * ID fiszki aktualnie edytowanej.
+   * Jeśli null, formularz działa w trybie "Dodaj nową".
+   * Jeśli number, formularz działa w trybie "Edytuj istniejącą".
+   */
   const [editingId, setEditingId] = useState<number | null>(null);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('token')
-      : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  // 1. Załaduj kategorie
+  /**
+   * Efekt 1: Inicjalizacja - pobranie listy kategorii.
+   */
   useEffect(() => {
     const loadCategories = async () => {
       try {
         const data = await apiRequest<Category[]>('/categories', 'GET');
         setCategories(data);
+        // Automatycznie wybierz pierwszą kategorię
         if (data.length > 0) {
           setSelectedCategoryId(data[0].id);
         }
@@ -54,7 +82,10 @@ export default function UserFlashcardsManager() {
     loadCategories();
   }, []);
 
-  // 2. Załaduj fiszki użytkownika dla wybranej kategorii (tylko prywatne)
+  /**
+   * Efekt 2: Pobranie fiszek po zmianie kategorii.
+   * Pobiera TYLKO fiszki należące do użytkownika (endpoint `/flashcards/user`).
+   */
   useEffect(() => {
     const loadFlashcards = async () => {
       if (!selectedCategoryId || !token) {
@@ -80,13 +111,16 @@ export default function UserFlashcardsManager() {
     loadFlashcards();
   }, [selectedCategoryId, token]);
 
+  /** Resetuje formularz do stanu początkowego (tryb dodawania). */
   const resetForm = () => {
     setEditingId(null);
     setFront('');
     setBack('');
   };
 
-  // 3. Dodawanie nowej fiszki
+  /**
+   * Obsługa dodawania nowej fiszki (POST).
+   */
   const handleCreate = async () => {
     if (!token) {
       alert('Musisz być zalogowany.');
@@ -110,10 +144,11 @@ export default function UserFlashcardsManager() {
           front,
           back,
           categoryId: selectedCategoryId,
-          isGlobal: false,
+          isGlobal: false, // Fiszki użytkownika są zawsze prywatne
         },
         token
       );
+      // Aktualizacja lokalnego stanu (Optymistycznie lub po sukcesie)
       setFlashcards((prev) => [...prev, created]);
       resetForm();
     } catch (e: any) {
@@ -124,14 +159,18 @@ export default function UserFlashcardsManager() {
     }
   };
 
-  // 4. Przygotuj edycję istniejącej fiszki
+  /**
+   * Przełącza formularz w tryb edycji, wypełniając pola danymi wybranej fiszki.
+   */
   const startEdit = (card: Flashcard) => {
     setEditingId(card.id);
     setFront(card.front);
     setBack(card.back);
   };
 
-  // 5. Zapisz edycję (PUT)
+  /**
+   * Obsługa zapisu zmian w istniejącej fiszce (PUT).
+   */
   const handleUpdate = async () => {
     if (!editingId) return;
     if (!token) {
@@ -151,6 +190,7 @@ export default function UserFlashcardsManager() {
         { front, back },
         token
       );
+      // Aktualizacja elementu w tablicy
       setFlashcards((prev) =>
         prev.map((c) => (c.id === updated.id ? updated : c))
       );
@@ -163,7 +203,9 @@ export default function UserFlashcardsManager() {
     }
   };
 
-  // 6. Usuń fiszkę (DELETE)
+  /**
+   * Obsługa usuwania fiszki (DELETE).
+   */
   const handleDelete = async (id: number) => {
     if (!token) {
       alert('Musisz być zalogowany.');
@@ -178,7 +220,10 @@ export default function UserFlashcardsManager() {
         undefined,
         token
       );
+      // Usunięcie z lokalnego stanu
       setFlashcards((prev) => prev.filter((c) => c.id !== id));
+      
+      // Jeśli usuwamy fiszkę, która była właśnie edytowana, czyścimy formularz
       if (editingId === id) {
         resetForm();
       }
@@ -199,7 +244,7 @@ export default function UserFlashcardsManager() {
             Twoje fiszki
           </h1>
 
-          {/* wybór kategorii */}
+          {/* Selektor kategorii */}
           <div className={styles.form}>
             <div className={styles.formGroup}>
               <label className={styles.label}>
@@ -224,7 +269,7 @@ export default function UserFlashcardsManager() {
             </div>
           </div>
 
-          {/* formularz dodawania / edycji */}
+          {/* Formularz Edytora (Współdzielony dla Create/Update) */}
           <div className={styles.stepContent}>
             <div className={styles.stepHeader}>
               <h2 className={styles.stepTitle}>
@@ -298,7 +343,7 @@ export default function UserFlashcardsManager() {
             </div>
           </div>
 
-          {/* lista istniejących fiszek (tylko użytkownika) */}
+          {/* Lista podglądu fiszek */}
           <div className={styles.cardsPreview}>
             <h2 className={styles.previewTitle}>
               <span className={styles.previewIcon}>📋</span>

@@ -1,9 +1,21 @@
+/**
+ * @file PrivacySettings.tsx
+ * @brief Komponent zarządzania ustawieniami prywatności profilu.
+ *
+ * Umożliwia użytkownikowi decydowanie o widoczności jego profilu oraz statystyk nauki
+ * dla innych użytkowników platformy. Zawiera interaktywną tabelę (macierz),
+ * która wizualizuje skutki wybranych ustawień.
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import styles from '../styles/SettingsForm.module.css';
 import { updateUserSettings } from '../lib/api';
 
+/**
+ * Interfejs reprezentujący pełny zestaw ustawień użytkownika.
+ */
 interface UserSettings {
   id: number;
   userId: number;
@@ -11,26 +23,52 @@ interface UserSettings {
   difficulty: string;
   notificationsEnabled: boolean;
   emailNotifications: boolean;
+  /** Czy profil jest widoczny publicznie (np. w rankingach) */
   profilePublic: boolean;
+  /** Czy szczegółowe statystyki są widoczne dla odwiedzających profil */
   showStats: boolean;
 }
 
+/**
+ * Właściwości (Props) przyjmowane przez komponent PrivacySettings.
+ */
 interface PrivacySettingsProps {
+  /** ID użytkownika */
   userId: number;
+  /** Aktualne ustawienia (lub null przed załadowaniem) */
   settings: UserSettings | null;
+  /** Callback po pomyślnym zapisie */
   onSuccess?: () => void;
 }
 
+/**
+ * Komponent PrivacySettings.
+ *
+ * Obsługuje dwa główne przełączniki:
+ * 1. `profilePublic`: Globalna widoczność profilu.
+ * 2. `showStats`: Widoczność szczegółów postępu.
+ *
+ * Komponent zawiera również tabelę "Co inne osoby mogą zobaczyć", która
+ * reaguje na zmiany stanu w czasie rzeczywistym.
+ *
+ * @param {PrivacySettingsProps} props - Właściwości komponentu.
+ * @returns {JSX.Element} Panel ustawień prywatności.
+ */
 export default function PrivacySettings({ userId, settings, onSuccess }: PrivacySettingsProps) {
+  // --- STANY UI ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Formy
+  // --- STANY FORMULARZA ---
   const [profilePublic, setProfilePublic] = useState(true);
   const [showStats, setShowStats] = useState(true);
 
-  // Załaduj ustawienia
+  /**
+   * Efekt synchronizujący stan lokalny z danymi z API.
+   * Używa operatora nullish coalescing (`??`), aby domyślnie ustawić `true`
+   * w przypadku braku danych (polityka "open by default").
+   */
   useEffect(() => {
     if (settings) {
       setProfilePublic(settings.profilePublic ?? true);
@@ -38,7 +76,13 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
     }
   }, [settings]);
 
+  /**
+   * Obsługa przełączania ustawień prywatności.
+   *
+   * @param {('profile' | 'stats')} field - Określa, który przełącznik został kliknięty.
+   */
   const handleToggle = async (field: 'profile' | 'stats') => {
+    // Obliczenie nowych wartości
     const newProfilePublic = field === 'profile' ? !profilePublic : profilePublic;
     const newShowStats = field === 'stats' ? !showStats : showStats;
 
@@ -52,11 +96,13 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         throw new Error('Brak tokena autoryzacji');
       }
 
+      // Wysłanie aktualizacji do API
       await updateUserSettings(userId, token, {
         profilePublic: newProfilePublic,
         showStats: newShowStats,
       });
 
+      // Aktualizacja stanu lokalnego tylko po sukcesie API
       if (field === 'profile') {
         setProfilePublic(newProfilePublic);
       } else {
@@ -68,7 +114,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         onSuccess();
       }
 
-      // Ukryj komunikat sukcesu po 3 sekundach
+      // Auto-ukrywanie komunikatu sukcesu
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Nieznany błąd';
@@ -85,7 +131,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         <p>Kontroluj widoczność Twojego profilu i danych</p>
       </div>
 
-      {/* Informacyjny box */}
+      {/* Box informacyjny */}
       <div 
         style={{
           backgroundColor: '#f0f9ff',
@@ -100,7 +146,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         </p>
       </div>
 
-      {/* Widoczność profilu */}
+      {/* Sekcja: Widoczność Profilu */}
       <div
         style={{
           backgroundColor: '#fff',
@@ -140,7 +186,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         </label>
       </div>
 
-      {/* Wyświetlanie statystyk */}
+      {/* Sekcja: Wyświetlanie statystyk */}
       <div
         style={{
           backgroundColor: '#fff',
@@ -180,7 +226,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         </label>
       </div>
 
-      {/* Komunikaty */}
+      {/* Komunikaty Feedbackowe */}
       {error && (
         <div className={styles.alert} style={{ backgroundColor: '#fee', color: '#c33', marginBottom: '16px' }}>
           ❌ {error}
@@ -193,7 +239,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         </div>
       )}
 
-      {/* Macierz widoczności */}
+      {/* Macierz widoczności (Truth Table) - pokazuje co dokładnie jest widoczne */}
       <div
         style={{
           backgroundColor: '#fafafa',
@@ -215,6 +261,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
             </tr>
           </thead>
           <tbody>
+            {/* Podstawowe dane zależą tylko od profilePublic */}
             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
               <td style={{ padding: '10px 0', color: '#666' }}>Nazwa wyświetlana</td>
               <td style={{ textAlign: 'center', color: profilePublic ? '#3c3' : '#999' }}>
@@ -233,6 +280,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
                 {profilePublic ? '✅' : '❌'}
               </td>
             </tr>
+            {/* Szczegółowe dane wymagają OBU zgód: profilePublic AND showStats */}
             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
               <td style={{ padding: '10px 0', color: '#666' }}>Punkty i rankingi</td>
               <td style={{ textAlign: 'center', color: profilePublic && showStats ? '#3c3' : '#999' }}>
@@ -255,7 +303,7 @@ export default function PrivacySettings({ userId, settings, onSuccess }: Privacy
         </table>
       </div>
 
-      {/* Zalecenia */}
+      {/* Zalecenia i Wyjaśnienia */}
       <div 
         style={{
           backgroundColor: '#fff3e0',

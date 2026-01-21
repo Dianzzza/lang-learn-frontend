@@ -1,3 +1,15 @@
+/**
+ * @file settings.tsx
+ * @brief Strona ustawień użytkownika (Panel konfiguracyjny).
+ *
+ * Komponent ten implementuje architekturę "Master-Detail":
+ * 1. Lewa kolumna: Menu nawigacyjne (`SettingsSidebar`).
+ * 2. Prawa kolumna: Dynamicznie renderowana treść (Konto, Bezpieczeństwo, Powiadomienia).
+ *
+ * Logika danych opiera się na pobraniu obiektu `user` z API autoryzacji
+ * oraz obiektu `settings` z API ustawień (z fallbackiem do danych lokalnych w przypadku braku endpointu).
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,13 +22,12 @@ import LearningSettings from '../components/LearningSettings';
 import NotificationSettings from '../components/NotificationSettings';
 import PrivacySettings from '../components/PrivacySettings';
 import styles from '../styles/Settings.module.css';
-// import { useProfile } from '../hooks/useProfile'; // ❌ Usuwamy to
-// import { getUserSettings } from '../lib/api'; // ❌ To też, użyjemy apiRequest bezpośrednio
-import { apiRequest } from '../lib/api'; // ✅ Dodajemy nasz helper
+import { apiRequest } from '../lib/api';
 
-// TypeScript types
+/** Typy zakładek dostępnych w panelu */
 type SettingsTab = 'account' | 'security' | 'learning' | 'notifications' | 'privacy';
 
+/** Model ustawień użytkownika (zgodny z bazą danych) */
 interface UserSettings {
   id: number;
   userId: number;
@@ -30,21 +41,23 @@ interface UserSettings {
 
 export default function SettingsPage() {
   const router = useRouter();
+  
+  // --- STANY UI ---
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
-  const [saveMessage, setSaveMessage] = useState<string>('');
-  
-  // Zastępujemy hook useProfile lokalnym stanem
-  const [user, setUser] = useState<any>(null);
-  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  
-  // Jeden wspólny stan ładowania
+  const [saveMessage, setSaveMessage] = useState<string>(''); // Feedback dla użytkownika (Toast)
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
 
-  // --- NOWA, BEZPIECZNA LOGIKA POBIERANIA DANYCH ---
+  // --- STANY DANYCH ---
+  const [user, setUser] = useState<any>(null);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+
+  /**
+   * Efekt inicjalizacji: Pobiera dane użytkownika i jego ustawienia.
+   */
   useEffect(() => {
     const initSettings = async () => {
-      // 1. Sprawdzamy token
+      // 1. Weryfikacja tokena (Client-side Auth Guard)
       const token = localStorage.getItem('token');
       
       if (!token) {
@@ -56,17 +69,18 @@ export default function SettingsPage() {
       try {
         setLoading(true);
 
-        // 2. Pobieramy usera (/auth/me)
+        // 2. Pobranie danych podstawowych użytkownika
         const userData = await apiRequest<any>('/auth/me', 'GET', undefined, token);
         setUser(userData);
 
-        // 3. Pobieramy ustawienia (lub ustawiamy domyślne, jeśli endpoint nie istnieje)
+        // 3. Pobranie ustawień szczegółowych
         try {
-            // Próbujemy pobrać ustawienia, jeśli masz taki endpoint
+            // W przyszłości odkomentować właściwe wywołanie API:
             // const settings = await apiRequest<UserSettings>(`/users/${userData.id}/settings`, 'GET', undefined, token);
             // setUserSettings(settings);
             
-            // NA RAZIE: Ustawiamy bezpieczne dane domyślne (Mock), żeby strona działała
+            // TYMCZASOWO: Mock Data (Fallback)
+            // Umożliwia pracę nad UI nawet bez gotowego endpointu backendowego.
             setUserSettings({
                 id: 1,
                 userId: userData.id,
@@ -92,9 +106,9 @@ export default function SettingsPage() {
     initSettings();
   }, []);
 
-  // --- KONIEC LOGIKI, DALEJ TYLKO WIDOK ---
+  // --- RENDERY STANÓW ---
 
-  // Stan ładowania
+  // 1. Ładowanie
   if (loading) {
     return (
       <Layout>
@@ -106,7 +120,7 @@ export default function SettingsPage() {
     );
   }
 
-  // Zabezpieczenie: jeśli brak usera (błąd auth), pokazujemy ekran błędu zamiast pustej strony
+  // 2. Błąd Autoryzacji (Fallback zamiast redirecta, dla lepszego UX)
   if (authError || !user) {
     return (
         <Layout>
@@ -124,51 +138,29 @@ export default function SettingsPage() {
     );
   }
 
+  /**
+   * Wyświetla komunikat sukcesu przez 3 sekundy.
+   */
   const handleSaveSuccess = () => {
     setSaveMessage('✅ Zmiany zapisane pomyślnie!');
     setTimeout(() => setSaveMessage(''), 3000);
   };
 
+  /**
+   * Router wewnętrzny - zwraca odpowiedni komponent w zależności od wybranej zakładki.
+   */
   const renderContent = () => {
     switch (activeTab) {
       case 'account':
-        return (
-          <AccountSettings 
-            user={user}
-            onSuccess={handleSaveSuccess}
-          />
-        );
+        return <AccountSettings user={user} onSuccess={handleSaveSuccess} />;
       case 'security':
-        return (
-          <SecuritySettings 
-            user={user}
-            onSuccess={handleSaveSuccess}
-          />
-        );
+        return <SecuritySettings user={user} onSuccess={handleSaveSuccess} />;
       case 'learning':
-        return (
-          <LearningSettings 
-            userId={user.id}
-            settings={userSettings}
-            onSuccess={handleSaveSuccess}
-          />
-        );
+        return <LearningSettings userId={user.id} settings={userSettings} onSuccess={handleSaveSuccess} />;
       case 'notifications':
-        return (
-          <NotificationSettings 
-            userId={user.id}
-            settings={userSettings}
-            onSuccess={handleSaveSuccess}
-          />
-        );
+        return <NotificationSettings userId={user.id} settings={userSettings} onSuccess={handleSaveSuccess} />;
       case 'privacy':
-        return (
-          <PrivacySettings 
-            userId={user.id}
-            settings={userSettings}
-            onSuccess={handleSaveSuccess}
-          />
-        );
+        return <PrivacySettings userId={user.id} settings={userSettings} onSuccess={handleSaveSuccess} />;
       default:
         return null;
     }
@@ -190,17 +182,16 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* Save message */}
+          {/* Toast message (Sukces/Błąd zapisu) */}
           {saveMessage && (
             <div className={`${styles.message} ${saveMessage.includes('✅') ? styles.success : styles.error}`}>
               {saveMessage}
             </div>
           )}
 
-          {/* Layout główny - sidebar + content */}
+          {/* Główny Grid: Sidebar + Content */}
           <div className={styles.settingsLayout}>
             
-            {/* Sidebar - navigation */}
             <div className={styles.sidebar}>
               <SettingsSidebar 
                 activeTab={activeTab}
@@ -208,9 +199,7 @@ export default function SettingsPage() {
               />
             </div>
 
-            {/* Content - active settings section */}
             <div className={styles.content}>
-              {/* Usunąłem settingsLoading stąd, bo mamy globalne loading na górze */}
                {renderContent()}
             </div>
 

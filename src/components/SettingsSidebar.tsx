@@ -1,16 +1,35 @@
+/**
+ * @file SettingsSidebar.tsx
+ * @brief Komponent paska bocznego nawigacji w panelu ustawień.
+ *
+ * Wyświetla listę dostępnych sekcji konfiguracyjnych (np. Profil, Bezpieczeństwo).
+ * Działa jako komponent kontrolowany (stateless) - stan aktywnej zakładki
+ * jest zarządzany przez komponent nadrzędny (np. stronę Settings).
+ */
 
 'use client';
 
 import styles from '../styles/SettingsSidebar.module.css';
 
-// TypeScript types
+/**
+ * Typ unii (Union Type) określający dozwolone identyfikatory zakładek.
+ * Zapewnia ścisłe typowanie przy przełączaniu widoków.
+ */
 type SettingsTab = 'account' | 'security' | 'learning' | 'notifications' | 'privacy';
 
+/**
+ * Właściwości (Props) przyjmowane przez komponent SettingsSidebar.
+ */
 interface SettingsSidebarProps {
+  /** Aktualnie wybrana zakładka */
   activeTab: SettingsTab;
+  /** Funkcja zmieniająca aktywną zakładkę w stanie rodzica */
   onTabChange: (tab: SettingsTab) => void;
 }
 
+/**
+ * Wewnętrzny interfejs opisujący strukturę pojedynczego elementu menu.
+ */
 interface NavItem {
   id: SettingsTab;
   label: string;
@@ -18,7 +37,22 @@ interface NavItem {
   description: string;
 }
 
+/**
+ * Komponent SettingsSidebar.
+ *
+ * Renderuje pionowe menu nawigacyjne. Wykorzystuje tablicę konfiguracyjną `navItems`
+ * do generowania przycisków, co ułatwia skalowanie i utrzymanie kodu.
+ *
+ * @param {SettingsSidebarProps} props - Właściwości komponentu.
+ * @returns {JSX.Element} Panel boczny z nawigacją.
+ */
 export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
+  
+  /**
+   * Konfiguracja elementów menu.
+   * Dodanie nowej sekcji wymaga jedynie dopisania obiektu do tej tablicy
+   * oraz rozszerzenia typu `SettingsTab`.
+   */
   const navItems: NavItem[] = [
     {
       id: 'account',
@@ -54,6 +88,7 @@ export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSide
 
   return (
     <div className={styles.container}>
+      {/* Nagłówek sekcji nawigacji */}
       <div className={styles.header}>
         <h3 className={styles.title}>Ustawienia</h3>
         <p className={styles.subtitle}>
@@ -61,17 +96,21 @@ export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSide
         </p>
       </div>
 
+      {/* Lista nawigacyjna */}
       <nav className={styles.navigation}>
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
+            // Warunkowe nadawanie klasy .active dla wybranego elementu
             className={`${styles.navItem} ${activeTab === item.id ? styles.active : ''}`}
             title={item.description}
+            type="button"
           >
             <div className={styles.navIcon}>
               {item.icon}
             </div>
+            
             <div className={styles.navContent}>
               <div className={styles.navLabel}>
                 {item.label}
@@ -80,6 +119,7 @@ export default function SettingsSidebar({ activeTab, onTabChange }: SettingsSide
                 {item.description}
               </div>
             </div>
+            
             <div className={styles.navArrow}>
               →
             </div>

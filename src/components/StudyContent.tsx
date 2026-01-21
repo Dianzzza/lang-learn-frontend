@@ -1,9 +1,22 @@
+/**
+ * @file StudyContent.tsx
+ * @brief Główny kontener wyświetlający listę materiałów edukacyjnych.
+ *
+ * Komponent ten odpowiada za prezentację danych w zależności od ich stanu:
+ * 1. Ładowanie (Spinner).
+ * 2. Brak wyników (Pusty stan z kontekstem wyszukiwania/filtrów).
+ * 3. Lista wyników (Grid lub Lista kart).
+ */
+
 'use client';
 
 import StudyCard from './StudyCard';
 import styles from '../styles/StudyContent.module.css';
 
-// DODANE TYPESCRIPT TYPES
+/**
+ * Interfejs reprezentujący pojedynczy materiał edukacyjny.
+ * Zawiera wszystkie dane potrzebne do wyrenderowania karty `StudyCard`.
+ */
 interface Material {
   id: number;
   title: string;
@@ -20,15 +33,31 @@ interface Material {
   icon: string;
 }
 
+/**
+ * Właściwości (Props) komponentu StudyContent.
+ */
 interface StudyContentProps {
+  /** Lista materiałów do wyświetlenia */
   materials: Material[];
+  /** Tryb wyświetlania: siatka (kafelki) lub lista */
   viewMode: 'grid' | 'list';
+  /** Flaga sterująca widocznością spinnera ładowania */
   isLoading: boolean;
+  /** Aktualnie wpisana fraza wyszukiwania (używana w Empty State) */
   searchTerm: string;
+  /** Liczba aktywnych filtrów (używana w Empty State) */
   activeFilterCount: number;
 }
 
+/**
+ * Komponent StudyContent.
+ *
+ * @param {StudyContentProps} props - Właściwości komponentu.
+ * @returns {JSX.Element} Odpowiedni widok w zależności od stanu danych.
+ */
 export default function StudyContent({ materials, viewMode, isLoading, searchTerm, activeFilterCount }: StudyContentProps) {
+  
+  // --- STAN 1: ŁADOWANIE ---
   if (isLoading) {
     return (
       <div className={styles.container}>
@@ -40,21 +69,27 @@ export default function StudyContent({ materials, viewMode, isLoading, searchTer
     );
   }
 
+  // --- STAN 2: BRAK WYNIKÓW (EMPTY STATE) ---
   if (materials.length === 0) {
+    // Sprawdzamy, czy brak wyników wynika z filtrów/wyszukiwania, czy po prostu baza jest pusta
+    const isFiltered = searchTerm || activeFilterCount > 0;
+
     return (
       <div className={styles.container}>
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}></div>
           <h3 className={styles.emptyTitle}>
-            {searchTerm || activeFilterCount > 0 ? 'Nie znaleziono materiałów' : 'Brak dostępnych materiałów'}
+            {isFiltered ? 'Nie znaleziono materiałów' : 'Brak dostępnych materiałów'}
           </h3>
           <p className={styles.emptyDescription}>
-            {searchTerm || activeFilterCount > 0 ? 
+            {isFiltered ? 
               `Spróbuj zmienić kryteria wyszukiwania lub wyczyścić filtry.` : 
               'Dodaj nowe materiały do nauki lub skontaktuj się z administratorem.'
             }
           </p>
-          {(searchTerm || activeFilterCount > 0) && (
+          
+          {/* Wyświetlenie podsumowania, dlaczego lista jest pusta (tylko przy filtrowaniu) */}
+          {isFiltered && (
             <div className={styles.searchSummary}>
               {searchTerm && (
                 <div className={styles.searchInfo}>
@@ -73,13 +108,15 @@ export default function StudyContent({ materials, viewMode, isLoading, searchTer
     );
   }
 
+  // --- STAN 3: LISTA MATERIAŁÓW (CONTENT) ---
   return (
     <div className={styles.container}>
-      {/* Results Header */}
+      {/* Nagłówek wyników z licznikiem */}
       <div className={styles.resultsHeader}>
         <div className={styles.resultsCount}>
           <span className={styles.countNumber}>{materials.length}</span>
           <span className={styles.countText}>
+            {/* Prosta odmiana przez przypadki dla języka polskiego */}
             {materials.length === 1 ? 'materiał' : 
              materials.length < 5 ? 'materiały' : 'materiałów'}
           </span>
@@ -90,6 +127,7 @@ export default function StudyContent({ materials, viewMode, isLoading, searchTer
           )}
         </div>
 
+        {/* Przyciski szybkich akcji dla całej listy */}
         <div className={styles.quickActions}>
           <button className={styles.quickAction} title="Oznacz wszystkie jako ulubione">
             💝 Dodaj do ulubionych
@@ -100,7 +138,7 @@ export default function StudyContent({ materials, viewMode, isLoading, searchTer
         </div>
       </div>
 
-      {/* Materials List */}
+      {/* Grid/Lista kart */}
       <div className={styles.materialsContent}>
         <div className={`${styles.materialsList} ${styles[viewMode]}`}>
           {materials.map((material, index) => (
@@ -108,6 +146,8 @@ export default function StudyContent({ materials, viewMode, isLoading, searchTer
               key={material.id}
               material={material}
               viewMode={viewMode}
+              // Opóźnienie dla animacji kaskadowej (Staggered Animation)
+              // Każda kolejna karta pojawia się 100ms później
               animationDelay={index * 0.1}
             />
           ))}
