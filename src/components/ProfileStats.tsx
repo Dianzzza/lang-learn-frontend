@@ -1,4 +1,4 @@
-// src/components/ProfileStats.tsx - Z BUTTONEM "KONTYNUUJ NAUKĘ"
+// src/components/ProfileStats.tsx 
 
 import React from 'react';
 import { useRouter } from 'next/router';
@@ -9,7 +9,6 @@ interface ProfileStatsProps {
   longestStreak: number;
   todayLessons: number;
   dailyGoal: number;
-  totalHours: number;
 }
 
 export default function ProfileStats({
@@ -18,7 +17,6 @@ export default function ProfileStats({
   longestStreak,
   todayLessons,
   dailyGoal,
-  totalHours,
 }: ProfileStatsProps) {
   const router = useRouter();
   const safeDailyGoal = Math.max(dailyGoal || 1, 1);

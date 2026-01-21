@@ -4,7 +4,6 @@
 import { useState, useRef } from 'react';
 import styles from '../styles/StudySearch.module.css';
 
-// DODANE TYPESCRIPT TYPES
 interface StudySearchProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
@@ -21,7 +20,6 @@ export default function StudySearch({ searchTerm, onSearchChange }: StudySearchP
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    // Opcjonalnie: dodatkowa logika po submit
   };
 
   return (

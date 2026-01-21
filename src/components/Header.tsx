@@ -1,11 +1,10 @@
-// frontend/src/components/Header.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Header.module.css';
-import { useAuth } from '../context/AuthContext'; // <--- 1. Importujemy kontekst
+import { useAuth } from '../context/AuthContext';
 
 interface NavigationItem {
   name: string;
@@ -13,14 +12,13 @@ interface NavigationItem {
   icon: string;
 }
 
-// Uprościliśmy propsy, bo user i logout bierzemy z kontekstu
 interface HeaderProps {
   onAuthOpen: (mode?: 'login' | 'register') => void;
   currentPath: string;
 }
 
 export default function Header({ onAuthOpen, currentPath }: HeaderProps) {
-  const { user, logout } = useAuth(); // <--- 2. Wyciągamy usera i funkcję logout
+  const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const router = useRouter();
 
@@ -34,7 +32,7 @@ export default function Header({ onAuthOpen, currentPath }: HeaderProps) {
 
   const handleLogoutClick = () => {
     closeMenu();
-    logout(); // To automatycznie przeniesie Cię na Landing Page (zdefiniowane w AuthContext)
+    logout();
   };
 
   const navigationItems: NavigationItem[] = [
@@ -88,12 +86,10 @@ export default function Header({ onAuthOpen, currentPath }: HeaderProps) {
               // WIDOK DLA ZALOGOWANEGO
               <div className={styles.userProfileWrapper}>
                 <Link href="/profile" className={styles.userProfile} onClick={closeMenu}>
-                  {/* Generujemy avatar z inicjałów, jeśli user nie ma własnego */}
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${user.username}&background=6366f1&color=fff&size=32`}
-                    alt={user.username}
-                    className={styles.avatar}
-                  />
+                  {/* Avatar z bazy danych */}
+                  <div style={{ fontSize: '32px', minWidth: '40px', textAlign: 'center', height: '40px', lineHeight: '40px' }}>
+                    {user.avatar || '👤'}
+                  </div>
                   <span className={styles.username}>{user.username}</span>
                 </Link>
                 
@@ -106,7 +102,7 @@ export default function Header({ onAuthOpen, currentPath }: HeaderProps) {
                 </button>
               </div>
             ) : (
-              // WIDOK DLA NIEZALOGOWANEGO (Teoretycznie rzadko widoczny, bo chroni nas LandingPage, ale warto mieć)
+              // WIDOK DLA NIEZALOGOWANEGO
               <button
                 className={styles.loginButton}
                 onClick={() => onAuthOpen('login')}
@@ -152,13 +148,13 @@ export default function Header({ onAuthOpen, currentPath }: HeaderProps) {
             <div className={styles.mobileMenuDivider}></div>
 
             {user ? (
-               <button
-               className={styles.mobileLoginButton}
-               onClick={handleLogoutClick}
-             >
-               <span className={styles.mobileLoginIcon}>🚪</span>
-               <span className={styles.mobileLoginText}>Wyloguj się</span>
-             </button>
+              <button
+                className={styles.mobileLoginButton}
+                onClick={handleLogoutClick}
+              >
+                <span className={styles.mobileLoginIcon}>🚪</span>
+                <span className={styles.mobileLoginText}>Wyloguj się</span>
+              </button>
             ) : (
               <button
                 className={styles.mobileLoginButton}

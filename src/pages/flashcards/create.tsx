@@ -41,7 +41,12 @@ export default function UserFlashcardsManager() {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const data = await apiRequest<Category[]>('/categories', 'GET');
+        const data = await apiRequest<Category[]>(
+          '/categories',
+          'GET',
+          undefined,
+          token || undefined  
+        );
         setCategories(data);
         if (data.length > 0) {
           setSelectedCategoryId(data[0].id);
@@ -51,8 +56,9 @@ export default function UserFlashcardsManager() {
         alert('Nie udało się załadować kategorii.');
       }
     };
+
     loadCategories();
-  }, []);
+  }, [token]);
 
   // 2. Załaduj fiszki użytkownika dla wybranej kategorii (tylko prywatne)
   useEffect(() => {

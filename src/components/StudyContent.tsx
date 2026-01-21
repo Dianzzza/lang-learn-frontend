@@ -3,7 +3,6 @@
 import StudyCard from './StudyCard';
 import styles from '../styles/StudyContent.module.css';
 
-// DODANE TYPESCRIPT TYPES
 interface Material {
   id: number;
   title: string;

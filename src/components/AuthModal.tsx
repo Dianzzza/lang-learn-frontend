@@ -7,7 +7,6 @@ import ForgotPasswordForm from './ForgotPasswordForm';
 import ResetPasswordForm from './ResetPasswordForm';
 import styles from '../styles/AuthModal.module.css';
 
-// jeśli masz api.ts w lib/, to importuj stamtąd:
 import { apiRequest } from '../lib/api';
 
 interface UserData {
@@ -31,13 +30,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // blokuje scrollowanie tła
+
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
-  // ESC zamyka modal
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -62,7 +61,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const handleForgotPasswordSubmit = async (email: string): Promise<void> => {
     setIsLoading(true);
     try {
-      // prawdziwe wywołanie backendu
       await apiRequest('/auth/request-password-reset', 'POST', { email });
       setResetEmail(email);
       setMode('reset-sent');

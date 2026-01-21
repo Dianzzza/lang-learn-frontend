@@ -227,25 +227,6 @@ export default function NotificationSettings({ userId, settings, onSuccess }: No
           </p>
         )}
       </div>
-
-      {/* Zalecenia */}
-      <div 
-        style={{
-          backgroundColor: '#fff3e0',
-          border: '1px solid #ffe0b2',
-          borderRadius: '8px',
-          padding: '16px',
-          marginTop: '24px'
-        }}
-      >
-        <h3 style={{ margin: '0 0 12px 0', color: '#e65100' }}>💡 Zalecenia:</h3>
-        <ul style={{ margin: 0, paddingLeft: '20px', color: '#bf360c', fontSize: '13px' }}>
-          <li><strong>Włącz powiadomienia:</strong> Pomogą Ci być konsekwentnym w nauce</li>
-          <li><strong>Otrzymuj raporty e-mail:</strong> Dobrze zobaczyć swój postęp</li>
-          <li><strong>Ustaw czas:</strong> Powiadomienia będą wysyłane o najlepszym dla Ciebie времени</li>
-          <li><strong>Wyrażanie:</strong> Możesz zawsze zmienić ustawienia w każdej chwili</li>
-        </ul>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,3 @@
-// pages/grammar/[id]/index.tsx
-// SZCZEGÓŁOWA LEKCJA GRAMATYKI
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -44,7 +41,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
 
   const lessonId = params?.id ? parseInt(params.id) : 1;
 
-  // 🔒 PRZYKŁADOWA LEKCJA - Present Simple vs Continuous
+  // PRZYKŁADOWA LEKCJA - Present Simple vs Continuous
   const grammarRules: GrammarRule[] = [
     {
       id: 1,
@@ -144,7 +141,7 @@ export default function GrammarLesson({ params }: { params?: { id?: string } }) 
               <div className={styles.lessonMeta}>
                 <span className={styles.levelBadge}>A2</span>
                 <span className={styles.categoryBadge}>Czasy</span>
-                <span className={styles.timeBadge}>⏱️ 45-60 min</span>
+                <span className={styles.timeBadge}>⏱️ 10 min</span>
               </div>
             </div>
           </div>

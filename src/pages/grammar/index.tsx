@@ -20,7 +20,6 @@ interface GrammarTopic {
   difficulty: 'Łatwe' | 'Średnie' | 'Trudne';
   estimatedTime: string;
   isCompleted: boolean;
-  progress: number; // 0-100%
   emoji: string;
   tags: string[];
   prerequisites?: string[];
@@ -53,50 +52,15 @@ export default function GrammarHub() {
       description: 'Różnice między czasami teraźniejszymi',
       level: 'A2',
       category: 'tenses',
-      lessonsCount: 4,
-      exercisesCount: 12,
-      examplesCount: 25,
+      lessonsCount: 1,
+      exercisesCount: 3,
+      examplesCount: 6,
       difficulty: 'Łatwe',
-      estimatedTime: '45-60 min',
+      estimatedTime: '10 min',
       isCompleted: true,
-      progress: 100,
       emoji: '⏰',
       tags: ['present-tenses', 'basic-grammar'],
       prerequisites: []
-    },
-    {
-      id: 2,
-      title: 'Modal Verbs: Can, Could, May, Might',
-      description: 'Czasowniki modalne wyrażające możliwość',
-      level: 'B1',
-      category: 'modals',
-      lessonsCount: 6,
-      exercisesCount: 18,
-      examplesCount: 35,
-      difficulty: 'Średnie',
-      estimatedTime: '60-90 min',
-      isCompleted: false,
-      progress: 34,
-      emoji: '🔧',
-      tags: ['modals', 'possibility', 'permission'],
-      prerequisites: ['Present Simple & Present Continuous']
-    },
-    {
-      id: 3,
-      title: 'Third Conditional',
-      description: 'Tryb warunkowy trzeci - sytuacje hipotetyczne z przeszłości',
-      level: 'B2',
-      category: 'conditionals',
-      lessonsCount: 5,
-      exercisesCount: 15,
-      examplesCount: 30,
-      difficulty: 'Trudne',
-      estimatedTime: '75-90 min',
-      isCompleted: false,
-      progress: 0,
-      emoji: '🤔',
-      tags: ['conditionals', 'advanced-grammar', 'hypothetical'],
-      prerequisites: ['Modal Verbs: Can, Could, May, Might']
     }
   ];
 
@@ -120,12 +84,6 @@ export default function GrammarHub() {
     return colors[level];
   };
 
-  const getProgressColor = (progress: number) => {
-    if (progress === 100) return 'var(--secondary-green)';
-    if (progress >= 50) return 'var(--secondary-amber)';
-    return 'var(--primary-indigo)';
-  };
-
   return (
     <Layout>
       <div className={styles.page}>
@@ -140,31 +98,6 @@ export default function GrammarHub() {
             <p className={styles.pageDescription}>
               Systematyczna nauka gramatyki od podstaw do zaawansowanego poziomu
             </p>
-          </div>
-
-          {/* 📊 PROGRESS OVERVIEW */}
-          <div className={styles.progressOverview}>
-            <div className={styles.overviewCard}>
-              <div className={styles.overviewIcon}>✅</div>
-              <div className={styles.overviewValue}>
-                {grammarTopics.filter(t => t.isCompleted).length}
-              </div>
-              <div className={styles.overviewLabel}>Ukończone tematy</div>
-            </div>
-            <div className={styles.overviewCard}>
-              <div className={styles.overviewIcon}>🔄</div>
-              <div className={styles.overviewValue}>
-                {grammarTopics.filter(t => t.progress > 0 && !t.isCompleted).length}
-              </div>
-              <div className={styles.overviewLabel}>W trakcie</div>
-            </div>
-            <div className={styles.overviewCard}>
-              <div className={styles.overviewIcon}>🎯</div>
-              <div className={styles.overviewValue}>
-                {Math.round(grammarTopics.reduce((sum, t) => sum + t.progress, 0) / grammarTopics.length)}%
-              </div>
-              <div className={styles.overviewLabel}>Ogólny postęp</div>
-            </div>
           </div>
 
           {/* 🔍 FILTERS */}
@@ -230,11 +163,6 @@ export default function GrammarHub() {
                     >
                       {topic.level}
                     </div>
-                    {topic.isCompleted && (
-                      <div className={styles.completedBadge}>
-                        <span className={styles.completedIcon}>✅</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -285,28 +213,6 @@ export default function GrammarHub() {
                   )}
                 </div>
 
-                {/* 📈 PROGRESS SECTION */}
-                <div className={styles.progressSection}>
-                  <div className={styles.progressHeader}>
-                    <span className={styles.progressLabel}>Postęp:</span>
-                    <span 
-                      className={styles.progressPercent}
-                      style={{ color: getProgressColor(topic.progress) }}
-                    >
-                      {topic.progress}%
-                    </span>
-                  </div>
-                  <div className={styles.progressBar}>
-                    <div 
-                      className={styles.progressFill}
-                      style={{ 
-                        width: `${topic.progress}%`,
-                        backgroundColor: getProgressColor(topic.progress)
-                      }}
-                    ></div>
-                  </div>
-                </div>
-
                 {/* 🎮 TOPIC ACTIONS */}
                 <div className={styles.topicActions}>
                   <Link 
@@ -314,7 +220,7 @@ export default function GrammarHub() {
                     className={`${styles.actionBtn} ${styles.study}`}
                   >
                     <span className={styles.actionIcon}>📖</span>
-                    {topic.progress > 0 ? 'Kontynuuj' : 'Rozpocznij'}
+                    {'Kontynuuj'}
                   </Link>
                   
                   <Link 

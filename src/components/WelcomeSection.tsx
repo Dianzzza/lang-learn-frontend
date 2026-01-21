@@ -15,8 +15,6 @@ interface WelcomeSectionProps {
 
 export default function WelcomeSection({ user }: WelcomeSectionProps) {
   const router = useRouter();
-
-  // 👇 TUTAJ ZMIANA: Kierujemy do /study (wybór trybu), a nie od razu do fiszek
   const handleStartLearning = () => {
     router.push('/study'); 
   };

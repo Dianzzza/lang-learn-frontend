@@ -13,7 +13,6 @@ interface StudyMode {
   color: string;
   href: string;
   badge?: string;
-  count: number;
 }
 
 export default function StudyHub() {
@@ -27,7 +26,6 @@ export default function StudyHub() {
       color: 'var(--primary-indigo)',
       href: '/flashcards',
       badge: 'Popularne',
-      count: 120
     },
     {
       id: 2,
@@ -37,7 +35,6 @@ export default function StudyHub() {
       color: 'var(--secondary-green)',
       href: '/grammar',
       badge: 'Nowe',
-      count: 85
     },
     {
       id: 3,
@@ -46,7 +43,6 @@ export default function StudyHub() {
       icon: '❓',
       color: 'var(--primary-cyan)',
       href: '/quiz',
-      count: 500
     }
   ];
 
@@ -87,7 +83,6 @@ export default function StudyHub() {
                   {/* 🏷️ BADGE */}
                   {mode.badge && (
                     <div className={styles.newBadge}>
-                      <span className={styles.newIcon}>✨</span>
                       {mode.badge}
                     </div>
                   )}
@@ -100,7 +95,6 @@ export default function StudyHub() {
                     >
                       {mode.icon}
                     </div>
-                    <div className={styles.modeCount}>{mode.count}+</div>
                   </div>
 
                   {/* 📝 MODE CONTENT */}
